@@ -1,0 +1,5 @@
+parameters:
+  espejote:
+    =_metadata:
+      multi_tenant: true
+    namespace: syn-espejote

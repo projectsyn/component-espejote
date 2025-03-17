@@ -1,0 +1,32 @@
+{
+  "template": "https://github.com/projectsyn/commodore-component-template.git",
+  "commit": "98d16f99766e6c6d97322dbe42e058f0e2bf73d0",
+  "checkout": "main",
+  "context": {
+    "cookiecutter": {
+      "name": "Espejote",
+      "slug": "espejote",
+      "parameter_key": "espejote",
+      "test_cases": "defaults",
+      "add_lib": "n",
+      "add_pp": "n",
+      "add_golden": "y",
+      "add_matrix": "y",
+      "add_go_unit": "n",
+      "automerge_patch": "y",
+      "automerge_patch_v0": "n",
+      "automerge_patch_regexp_blocklist": "",
+      "automerge_patch_v0_regexp_allowlist": "",
+      "automerge_minor_regexp_allowlist": "",
+      "auto_release": "y",
+      "copyright_holder": "VSHN AG <info@vshn.ch>",
+      "copyright_year": "2025",
+      "github_owner": "projectsyn",
+      "github_name": "component-espejote",
+      "github_url": "https://github.com/projectsyn/component-espejote",
+      "_template": "https://github.com/projectsyn/commodore-component-template.git",
+      "_commit": "98d16f99766e6c6d97322dbe42e058f0e2bf73d0"
+    }
+  },
+  "directory": null
+}

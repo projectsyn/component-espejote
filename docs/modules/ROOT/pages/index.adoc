@@ -1,0 +1,5 @@
+= Espejote
+
+espejote is a Commodore component to manage Espejote.
+
+See the xref:references/parameters.adoc[parameters] reference for further details.
