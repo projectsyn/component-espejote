@@ -3,3 +3,19 @@ parameters:
     =_metadata:
       multi_tenant: true
     namespace: syn-espejote
+
+    manifestVersion: main
+    kustomizeInput:
+      namespace: ${espejote:namespace}
+
+    images:
+      espejote:
+        registry: ghcr.io
+        repository: vshn/espejote
+        tag: latest
+
+    jsonnetLibraries: {}
+    managedResources: {}
+    rbac: {}
+
+    alerts: {} # TODO: Add alerts

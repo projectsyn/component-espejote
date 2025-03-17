@@ -1,0 +1,41 @@
+parameters:
+  espejote:
+    jsonnetLibraries:
+      my-namespace/my-lib:
+        spec:
+          foo: bar
+
+    managedResources:
+      without-sa:
+        spec:
+          foo: bar
+      with-sa:
+        spec:
+          foo: bar
+          serviceAccountRef: sa-with
+      with-sa-in-spec:
+        spec:
+          foo: bar
+          serviceAccountRef: sa-in-spec
+      my-namespace/copy-configmap:
+        rules:
+          configmap:
+            apiGroups:
+              - ""
+            resources:
+              - configmap
+            verbs:
+              - list
+              - get
+              - create
+        spec:
+          foo: bar
+      my-namespace/copy-secret:
+        clusterRoles:
+          - cluster-admin
+        roles:
+          - admin
+          - argocd-manager
+        spec:
+          foo: bar
+          serviceAccountRef: copy-configmap

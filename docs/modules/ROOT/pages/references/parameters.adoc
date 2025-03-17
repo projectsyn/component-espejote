@@ -11,9 +11,235 @@ default:: `syn-espejote`
 The namespace in which to deploy this component.
 
 
+== `manifests_version`
+
+[horizontal]
+type:: string
+default:: `${espejote:images:espejote:tag}`
+
+The Git reference to the controller deployment manifests.
+The default is the tag of the controller image.
+
+
+== `images`
+
+[horizontal]
+type:: dictionary
+
+The images to use for this component.
+
+
+== `jsonnetLibraries`
+
+[horizontal]
+type:: dictionary
++
+[source,yaml]
+----
+jsonnetLibraries:
+  my-namespace/my-lib: <1>
+    metadata: ... <2>
+    spec: ... <3>
+----
+<1> The key is parsed as a namespaced jsonnet library `<namespace>/<name>`.
+<2> The metadata of the jsonnet library (optional).
+<3> The spec of the jsonnet library (required).
+
+The jsonnet libraries to deploy.
+
+The keys are parsed as namespaced names `<namespace>/<name>` and used as names and namespaces of the jsonnet library.
+If no namespace is provided the jsonnet library is created in the fallback namespace provided in the `namespace` parameter.
+
+
+== `managedResources`
+
+[horizontal]
+type:: dictionary
+default:: {}
+
+The managed resources to deploy.
+
+The keys are parsed as namespaced names `<namespace>/<name>` and used as names and namespaces of the managed resource.
+If no namespace is provided the managed resource is created in the fallback namespace provided in the `namespace` parameter.
+
+=== `managedResources.<name>.metadata` / `managedResources.<name>.spec`
+
+[horizontal]
+type:: dictionary
+example::
++
+[source,yaml]
+----
+managedResources:
+  my-namespace/copy-configmap: <1>
+    metadata: ... <2>
+    spec: ... <3>
+----
+<1> The key is parsed as a namespaced managed resource `<namespace>/<name>`.
+<2> The metadata of the managed resource (optional).
+<3> The spec of the managed resource (required).
+
+The metadata and spec of the managed resource.
+
+[NOTE]
+====
+The component will automatically create the service account for the managed resource.
+If no service account is provided in the spec, the component will create a new one with the same name as the managed resource.
+====
+
+== `managedResources.<name>.rules`
+
+[horizontal]
+type:: dictionary
+example::
++
+[source,yaml]
+----
+managedResources:
+  my-namespace/copy-configmap:
+    rules:
+      configmap: <1>
+        apiGroups:
+          - ""
+        resources:
+          - configmap
+        verbs:
+          - list
+          - get
+          - create
+          - ~delete <2>
+    metadata: ...
+    spec: ...
+----
+<1> This key is ignored by the component, but can be used in the hierarchy to edit existing rules.
+<2> The verbs and resources prefixed with a tilde `~` are removed from the resulting rule, even if they're configured higher up in the configuration hierarchy.
+
+The keys of the `rules` dict are ignored by the component, but can be used in the hierarchy to edit existing rules.
+The component looks for keys `apiGroups`, `resources` and `verbs` in each value of the `rules_` dict.
+Each value is transformed into an entry of the role's `rules` list.
+The component expects that the values of fields `apiGroups`, `resources` and `verbs` are lists, and removes entries prefixed with a tilde (`~`) from the final value used for the entry in the role's `rules` list.
+
+[NOTE]
+====
+The component will create a role and a role binding for the given service account from the `rules` key.
+====
+
+=== `managedResources.<name>.clusterRoles` / `managedResources.<name>.roles`
+
+[horizontal]
+type:: list
+example::
++
+[source,yaml]
+----
+rbac:
+  my-namespace/service-account:
+    clusterRoles:
+      - cluster-admin <1>
+    roles:
+      - my-role <2>
+    metadata: ...
+    spec: ...
+----
+<1> The name of an existing cluster role.
+<2> The name of an existing role in the given namespace.
+
+The `clusterRoles` and `roles` keys have the same behavior, one creates role bindings for the given roles and the other creates role bindings for the given cluster roles.
+
+
+== `alerts`
+
+[horizontal]
+type:: dictionary
+example::
++
+[source,yaml]
+----
+alerts:
+  BadThingsHappening:
+    enabled: true
+    rule:
+    annotations:
+      description: Bad things have been happening on {{$labels.node}} for more than 10 minutes.
+      message: Bad things have been happening on {{$labels.node}} for more than 10 minutes.
+      runbook_url: https://hub.syn.tools/openshift-upgrade-controller/runbooks/BadThingsHappening.html
+    expr: |
+      bad_thing_happening == 1
+    for: 10m
+    labels:
+      severity: warning
+----
+
+`alerts` defines the alerts to be installed.
+The dictionary key is used as the name of the alert.
+
+
+=== `alerts.<name>.enabled`
+
+[horizontal]
+type:: bool
+
+Defines whether to install the alert.
+
+
+=== `alerts.<name>.rule`
+
+[horizontal]
+type:: dict
+
+Holds the configuration of the alert rule.
+
+See https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/[Prometheus Alerting Rules] for details.
+
+
 == Example
 
 [source,yaml]
 ----
-namespace: example-namespace
+managedResources:
+  my-namespace/copy-configmap:
+    spec:
+      applyOptions:
+        forceConflicts: true
+      triggers:
+        - interval: 10s
+        - watchResource:
+            apiVersion: v1
+            kind: ConfigMap
+            # name: my-configmap
+            labelSelector:
+                matchExpressions:
+                - key: espejote.io/created-by
+                operator: DoesNotExist
+            # matchNames: []
+            # ignoreNames: []
+            minTimeBetweenTriggers: 10s
+      context:
+        - def: cm
+            resource:
+            apiVersion: v1
+            kind: ConfigMap
+            # name: my-configmap
+            # matchNames: []
+            # ignoreNames: []
+            labelSelector:
+                matchExpressions:
+                - key: espejote.io/created-by
+                operator: DoesNotExist
+            cache: true
+      template: |
+        local trigger = std.extVar('trigger');
+        local cm = std.extVar('context').cm;
+        [
+        c {
+            metadata: {
+            name: 'copy-of-' + c.metadata.name,
+            // namespace: c.metadata.namespace,
+            labels+: {
+                'espejote.io/created-by': 'copy-configmap'
+            }
+            }
+        },
+        for c in cm.items
+        ]
 ----

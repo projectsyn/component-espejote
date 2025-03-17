@@ -1,0 +1,54 @@
+apiVersion: espejote.io/v1alpha1
+kind: ManagedResource
+metadata:
+  labels:
+    app.kubernetes.io/name: copy-configmap
+  name: copy-configmap
+  namespace: my-namespace
+spec:
+  foo: bar
+  serviceAccountRef: copy-configmap
+---
+apiVersion: espejote.io/v1alpha1
+kind: ManagedResource
+metadata:
+  labels:
+    app.kubernetes.io/name: copy-secret
+  name: copy-secret
+  namespace: my-namespace
+spec:
+  foo: bar
+  serviceAccountRef: copy-configmap
+---
+apiVersion: espejote.io/v1alpha1
+kind: ManagedResource
+metadata:
+  labels:
+    app.kubernetes.io/name: with-sa
+  name: with-sa
+  namespace: syn-espejote
+spec:
+  foo: bar
+  serviceAccountRef: sa-with
+---
+apiVersion: espejote.io/v1alpha1
+kind: ManagedResource
+metadata:
+  labels:
+    app.kubernetes.io/name: with-sa-in-spec
+  name: with-sa-in-spec
+  namespace: syn-espejote
+spec:
+  foo: bar
+  serviceAccountRef: sa-in-spec
+---
+apiVersion: espejote.io/v1alpha1
+kind: ManagedResource
+metadata:
+  labels:
+    app.kubernetes.io/name: without-sa
+  name: without-sa
+  namespace: syn-espejote
+spec:
+  foo: bar
+  serviceAccountRef: without-sa

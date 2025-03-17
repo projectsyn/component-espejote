@@ -1,0 +1,11 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    app.kubernetes.io/name: espejote-alerts
+  name: espejote-alerts
+  namespace: syn-espejote
+spec:
+  groups:
+    - name: espejote
+      rules: []
