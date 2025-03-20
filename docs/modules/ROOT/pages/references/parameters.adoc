@@ -25,8 +25,17 @@ The default is the tag of the controller image.
 
 [horizontal]
 type:: dictionary
+default:: See https://github.com/projectsyn/espejote/blob/master/class/defaults.yml[`class/defaults.yml`]
 
 The images to use for this component.
+
+
+== `resources``
+
+type:: dictionary
+default:: See https://github.com/projectsyn/espejote/blob/master/class/defaults.yml[`class/defaults.yml`]
+
+The resources of the deployment.
 
 
 == `jsonnetLibraries`
@@ -37,18 +46,20 @@ type:: dictionary
 [source,yaml]
 ----
 jsonnetLibraries:
-  my-namespace/my-lib: <1>
+  my-lib: <1>
     metadata: ... <2>
     spec: ... <3>
 ----
-<1> The key is parsed as a namespaced jsonnet library `<namespace>/<name>`.
+<1> The name of the jsonnet library.
 <2> The metadata of the jsonnet library (optional).
 <3> The spec of the jsonnet library (required).
 
 The jsonnet libraries to deploy.
 
-The keys are parsed as namespaced names `<namespace>/<name>` and used as names and namespaces of the jsonnet library.
-If no namespace is provided the jsonnet library is created in the fallback namespace provided in the `namespace` parameter.
+[NOTE]
+====
+Only shared libraries, i.e. libraries in the component's namespace, are supported.
+====
 
 
 == `managedResources`
@@ -87,7 +98,7 @@ The component will automatically create the service account for the managed reso
 If no service account is provided in the spec, the component will create a new one with the same name as the managed resource.
 ====
 
-== `managedResources.<name>.rules`
+== `managedResources.<name>.clusterRules` / `managedResources.<name>.rules`
 
 [horizontal]
 type:: dictionary
@@ -97,7 +108,7 @@ example::
 ----
 managedResources:
   my-namespace/copy-configmap:
-    rules:
+    _rules:
       configmap: <1>
         apiGroups:
           - ""
@@ -108,20 +119,29 @@ managedResources:
           - get
           - create
           - ~delete <2>
+    _clusterRules:
+      namespace:
+        apiGroups:
+          - ""
+        resources:
+          - namespace
+        verbs:
+          - list
     metadata: ...
     spec: ...
 ----
 <1> This key is ignored by the component, but can be used in the hierarchy to edit existing rules.
 <2> The verbs and resources prefixed with a tilde `~` are removed from the resulting rule, even if they're configured higher up in the configuration hierarchy.
 
-The keys of the `rules` dict are ignored by the component, but can be used in the hierarchy to edit existing rules.
-The component looks for keys `apiGroups`, `resources` and `verbs` in each value of the `rules_` dict.
+The keys of the `rules` and `clusterRules` dicts are ignored by the component, but can be used in the hierarchy to edit existing rules.
+The component looks for keys `apiGroups`, `resources` and `verbs` in each value of the `rules` and `clusterRules` dicts.
 Each value is transformed into an entry of the role's `rules` list.
 The component expects that the values of fields `apiGroups`, `resources` and `verbs` are lists, and removes entries prefixed with a tilde (`~`) from the final value used for the entry in the role's `rules` list.
 
 [NOTE]
 ====
-The component will create a role and a role binding for the given service account from the `rules` key.
+The component will create a role and a role binding for the given service account from the `rules` key,
+and a cluster role and a cluster role binding for the given service account from the `clusterRules` key.
 ====
 
 === `managedResources.<name>.clusterRoles` / `managedResources.<name>.roles`
@@ -132,11 +152,11 @@ example::
 +
 [source,yaml]
 ----
-rbac:
-  my-namespace/service-account:
-    clusterRoles:
+managedResources:
+  my-namespace/copy-configmap:
+    _clusterRoles:
       - cluster-admin <1>
-    roles:
+    _roles:
       - my-role <2>
     metadata: ...
     spec: ...
@@ -159,15 +179,15 @@ alerts:
   BadThingsHappening:
     enabled: true
     rule:
-    annotations:
-      description: Bad things have been happening on {{$labels.node}} for more than 10 minutes.
-      message: Bad things have been happening on {{$labels.node}} for more than 10 minutes.
-      runbook_url: https://hub.syn.tools/openshift-upgrade-controller/runbooks/BadThingsHappening.html
-    expr: |
-      bad_thing_happening == 1
-    for: 10m
-    labels:
-      severity: warning
+      annotations:
+        description: Bad things have been happening on {{$labels.node}} for more than 10 minutes.
+        message: Bad things have been happening on {{$labels.node}} for more than 10 minutes.
+        runbook_url: https://hub.syn.tools/openshift-upgrade-controller/runbooks/BadThingsHappening.html
+      expr: |
+        bad_thing_happening == 1
+      for: 10m
+      labels:
+        severity: warning
 ----
 
 `alerts` defines the alerts to be installed.
@@ -197,49 +217,56 @@ See https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/[P
 [source,yaml]
 ----
 managedResources:
-  my-namespace/copy-configmap:
+  my-namespace/inject-configmap:
+    metadata:
+      annotations:
+        description: |
+          Adds a config map called test to any namespace with the label "managedresource-sample.espejote.io/inject-cm".
+
+          If the reconcile was triggered by a trigger as defined in `triggers` it only renders the required config map.
+          If the trigger is unknown or the managed resource itself was changed all config maps are rendered and applied.
     spec:
-      applyOptions:
-        forceConflicts: true
+      serviceAccountRef:
+        name: espejote-inject-configmap
       triggers:
-        - interval: 10s
-        - watchResource:
-            apiVersion: v1
-            kind: ConfigMap
-            # name: my-configmap
-            labelSelector:
-                matchExpressions:
-                - key: espejote.io/created-by
-                operator: DoesNotExist
-            # matchNames: []
-            # ignoreNames: []
-            minTimeBetweenTriggers: 10s
+      - name: namespace
+        watchResource:
+          apiVersion: v1
+          kind: Namespace
+          labelSelector:
+            matchExpressions:
+            - key: managedresource-sample.espejote.io/inject-cm
+              operator: Exists
       context:
-        - def: cm
-            resource:
-            apiVersion: v1
-            kind: ConfigMap
-            # name: my-configmap
-            # matchNames: []
-            # ignoreNames: []
-            labelSelector:
-                matchExpressions:
-                - key: espejote.io/created-by
-                operator: DoesNotExist
-            cache: true
+      - name: namespaces
+        resource:
+          apiVersion: v1
+          kind: Namespace
+          labelSelector:
+            matchExpressions:
+            - key: managedresource-sample.espejote.io/inject-cm
+              operator: Exists
       template: |
-        local trigger = std.extVar('trigger');
-        local cm = std.extVar('context').cm;
-        [
-        c {
-            metadata: {
-            name: 'copy-of-' + c.metadata.name,
-            // namespace: c.metadata.namespace,
-            labels+: {
-                'espejote.io/created-by': 'copy-configmap'
-            }
-            }
-        },
-        for c in cm.items
+        local esp = import "espejote.libsonnet";
+        local samplelib = import "jsonnetlibrary-sample/sample.libsonnet";
+        local namespaces = esp.context().namespaces;
+
+        local cmForNs = function(ns) {
+          apiVersion: 'v1',
+          kind: 'ConfigMap',
+          metadata: {
+            name: 'test',
+            namespace: ns.metadata.name,
+          },
+          data: {
+            sample: samplelib.Sample,
+            nsLabel: std.get(ns.metadata.labels, "managedresource-sample.espejote.io/inject-cm"),
+          },
+        };
+
+        if esp.triggerName() == "namespace" then [
+          cmForNs(esp.triggerData().resource),
+        ] else [
+          cmForNs(ns) for ns in namespaces
         ]
 ----

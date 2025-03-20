@@ -1,7 +1,17 @@
 parameters:
   espejote:
+    resources:
+      espejote:
+        limits:
+          cpu: 200m
+          memory: 256Mi
+      rbac_proxy:
+        limits:
+          cpu: 1
+          memory: 256Mi
+
     jsonnetLibraries:
-      my-namespace/my-lib:
+      my-lib:
         spec:
           foo: bar
 
@@ -12,13 +22,23 @@ parameters:
       with-sa:
         spec:
           foo: bar
-          serviceAccountRef: sa-with
+          serviceAccountRef:
+            name: sa-with
       with-sa-in-spec:
         spec:
           foo: bar
-          serviceAccountRef: sa-in-spec
+          serviceAccountRef:
+            name: sa-in-spec
       my-namespace/copy-configmap:
-        rules:
+        _clusterRules:
+          namespace:
+            apiGroups:
+              - ""
+            resources:
+              - namespace
+            verbs:
+              - list
+        _rules:
           configmap:
             apiGroups:
               - ""
@@ -31,11 +51,12 @@ parameters:
         spec:
           foo: bar
       my-namespace/copy-secret:
-        clusterRoles:
+        _clusterRoles:
           - cluster-admin
-        roles:
+        _roles:
           - admin
           - argocd-manager
         spec:
           foo: bar
-          serviceAccountRef: copy-configmap
+          serviceAccountRef:
+            name: copy-configmap

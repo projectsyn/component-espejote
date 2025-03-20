@@ -7,7 +7,69 @@ local inv = kap.inventory();
 
 // The hiera parameters for the component
 local params = inv.parameters.espejote;
-local isOpenshift = std.member([ 'openshift', 'oke' ], inv.parameters.facts.distribution);
+local isOpenshift = std.member([ 'openshift4', 'oke' ], inv.parameters.facts.distribution);
+
+// Helpers: Names
+
+local namespacedName(name, namespace='') = {
+  local namespacedName = std.splitLimit(name, '/', 1),
+  local ns = if namespace != '' then namespace else params.namespace,
+  namespace: if std.length(namespacedName) > 1 then namespacedName[0] else ns,
+  name: if std.length(namespacedName) > 1 then namespacedName[1] else namespacedName[0],
+};
+
+local serviceAccountName(name) = 'espejote:%s' % std.get(
+  params.managedResources[name].spec,
+  'serviceAccountRef',
+  { name: namespacedName(name).name },
+).name;
+
+local hashedName(name, hidden=[]) =
+  // Ensure the total length of the name is less than 63 characters
+  // 63 - `espejote` - 2x `:` - hash length = 38
+  local unhashed = std.substr(std.join(':', name), 0, 38);
+  local toHash = std.join(':', name + hidden);
+  local hashed = std.substr(std.md5(toHash), 0, 15);
+  'espejote:%(unhashed)s:%(hashed)s' % [ unhashed, hashed ];
+
+// Helpers: Generate Roles and RoleBindings
+
+local processRole(r) = r {
+  local extraRules = std.objectValues(
+    com.getValueOrDefault(r, 'rules_', {})
+  ),
+  rules_:: null,
+  rules+: [ {
+    apiGroups: com.renderArray(rule.apiGroups),
+    resources: com.renderArray(rule.resources),
+    verbs: com.renderArray(rule.verbs),
+  } for rule in extraRules ],
+};
+
+local processRoleBinding(rb) = rb {
+  local rbNs = com.getValueOrDefault(rb.metadata, 'namespace', ''),
+
+  roleRef+:
+    {
+      apiGroup: 'rbac.authorization.k8s.io',
+    }
+    +
+    if std.objectHas(rb, 'role_') && std.objectHas(rb, 'clusterRole_') then error 'cannot specify both "role_" and "clusterRole_"'
+    else if std.objectHas(rb, 'role_') then {
+      kind: 'Role',
+      name: rb.role_,
+    }
+    else if std.objectHas(rb, 'clusterRole_') then {
+      kind: 'ClusterRole',
+      name: rb.clusterRole_,
+    }
+    else {},
+
+  role_:: null,
+  clusterRole_:: null,
+};
+
+// Namespace
 
 local namespace = kube.Namespace(params.namespace) {
   metadata+: {
@@ -18,6 +80,25 @@ local namespace = kube.Namespace(params.namespace) {
       [if isOpenshift then 'openshift.io/cluster-monitoring']: 'true',
     },
   },
+};
+
+// Aggregated ClusterRole
+
+local aggregatedClusterRole = kube._Object('rbac.authorization.k8s.io/v1', 'ClusterRole', 'espejote-crds-cluster-reader') {
+  metadata: {
+    labels: {
+      'app.kubernetes.io/name': 'espejote-crds-cluster-reader',
+      'rbac.authorization.k8s.io/aggregate-to-cluster-reader': 'true',
+    },
+    name: 'espejote-crds-cluster-reader',
+  },
+  rules: [
+    {
+      apiGroups: [ 'espejote.io' ],
+      resources: [ '*' ],
+      verbs: [ 'get', 'list', 'watch' ],
+    },
+  ],
 };
 
 // Alerts
@@ -51,174 +132,171 @@ local alerts = kube._Object('monitoring.coreos.com/v1', 'PrometheusRule', 'espej
   },
 };
 
-// Custom Resources
+// Jsonnet Libraries
 
-local namespacedName(name, namespace='') = {
-  local namespacedName = std.splitLimit(name, '/', 1),
-  local ns = if namespace != '' then namespace else params.namespace,
-  namespace: if std.length(namespacedName) > 1 then namespacedName[0] else ns,
-  name: if std.length(namespacedName) > 1 then namespacedName[1] else namespacedName[0],
-};
+local jsonnetLibrary(name) = espejote.jsonnetLibrary(name, params.namespace) + com.makeMergeable(params.jsonnetLibraries[name]);
 
-local serviceAccountName(name) = std.get(
-  params.managedResources[name].spec,
-  'serviceAccountRef',
-  namespacedName(name).name,
-);
+// Managed Resources
 
-local managedResources = [
+local managedResource(name) = [
   espejote.managedResource(namespacedName(name).name, namespacedName(name).namespace) + com.makeMergeable({
     spec+: {
-      serviceAccountRef: serviceAccountName(name),
+      serviceAccountRef: {
+        name: serviceAccountName(name),
+      },
     },
   }) + com.makeMergeable({
     [key]: params.managedResources[name][key]
     for key in std.objectFields(params.managedResources[name])
     if std.member([ 'metadata', 'spec' ], key)
-  })
-  for name in std.objectFields(params.managedResources)
-];
-
-local serviceAccounts = std.uniq([
-  kube._Object('rbac.authorization.k8s.io/v1', 'ServiceAccount', namespacedName(name).name) {
+  }),
+  {
+    apiVersion: 'v1',
+    kind: 'ServiceAccount',
     metadata: {
       labels: {
         'app.kubernetes.io/name': serviceAccountName(name),
+        'managedresource.espejote.io/name': namespacedName(name, namespace).name,
       },
       name: serviceAccountName(name),
       namespace: namespacedName(name).namespace,
     },
-  }
-  for name in std.objectFields(params.managedResources)
-]);
-
-local jsonnetLibraries = [
-  espejote.jsonnetLibrary(namespacedName(name).name, namespacedName(name).namespace) + com.makeMergeable(params.jsonnetLibraries[name])
-  for name in std.objectFields(params.jsonnetLibraries)
+  },
 ];
 
 // Roles and RoleBindings
 
-local hashedName(prefix, values) = '%s-%s' % [ prefix, std.md5(std.join('-', values)) ];
-
-local processRole(r) = r {
-  local extraRules = std.objectValues(
-    com.getValueOrDefault(r, 'rules_', {})
-  ),
-  rules_:: null,
-  rules+: [ {
-    apiGroups: com.renderArray(rule.apiGroups),
-    resources: com.renderArray(rule.resources),
-    verbs: com.renderArray(rule.verbs),
-  } for rule in extraRules ],
-};
-local roles = std.uniq([
-  processRole(r)
-  for r in [
-    kube._Object('rbac.authorization.k8s.io/v1', 'Role', namespacedName(name).name) {
-      metadata: {
-        labels: {
-          'app.kubernetes.io/name': hashedName('espejote', [ namespacedName(name).name, 'role' ]),
-        },
-        name: hashedName('espejote', [ namespacedName(name).name, 'role' ]),
-        namespace: namespacedName(name).namespace,
+local clusterRoleFromRules(name) = if std.get(params.managedResources[name], '_clusterRules', null) != null then [
+  processRole({
+    local generatedName = hashedName([ namespacedName(name).namespace, namespacedName(name).name ], [ 'clusterrole' ]),
+    apiVersion: 'rbac.authorization.k8s.io/v1',
+    kind: 'ClusterRole',
+    metadata: {
+      labels: {
+        'app.kubernetes.io/name': generatedName,
+        'managedresource.espejote.io/name': namespacedName(name, namespace).name,
+        'managedresource.espejote.io/namespace': namespacedName(name, namespace).namespace,
       },
-      rules_: params.managedResources[name].rules,
-    }
-    for name in std.objectFields(params.managedResources)
-    if std.get(params.managedResources[name], 'rules', null) != null
-  ]
-]);
-
-local processRoleBinding(rb) = rb {
-  local rbNs = com.getValueOrDefault(rb.metadata, 'namespace', ''),
-
-  roleRef+:
-    {
-      apiGroup: 'rbac.authorization.k8s.io',
-    }
-    +
-    if std.objectHas(rb, 'role_') && std.objectHas(rb, 'clusterRole_') then error 'cannot specify both "role_" and "clusterRole_"'
-    else if std.objectHas(rb, 'role_') then {
-      kind: 'Role',
-      name: rb.role_,
-    }
-    else if std.objectHas(rb, 'clusterRole_') then {
-      kind: 'ClusterRole',
-      name: rb.clusterRole_,
-    }
-    else {},
-
-  role_:: null,
-  clusterRole_:: null,
-};
-local roleBindings = [
-  processRoleBinding(rb)
-  for rb in [
-    kube._Object('rbac.authorization.k8s.io/v1', 'RoleBinding', 'default') {
-      metadata: {
-        labels: {
-          'app.kubernetes.io/name': hashedName('espejote', [ namespacedName(name).name, 'rules' ]),
-        },
-        name: hashedName('espejote', [ namespacedName(name).name, 'rules' ]),
-        namespace: namespacedName(name).namespace,
+      name: generatedName,
+    },
+    rules_: params.managedResources[name]._clusterRules,
+  }),
+  processRoleBinding({
+    local generatedName = hashedName([ namespacedName(name).namespace, namespacedName(name).name ], [ 'clusterrolebinding' ]),
+    apiVersion: 'rbac.authorization.k8s.io/v1',
+    kind: 'ClusterRoleBinding',
+    metadata: {
+      labels: {
+        'app.kubernetes.io/name': generatedName,
+        'managedresource.espejote.io/name': namespacedName(name, namespace).name,
+        'managedresource.espejote.io/namespace': namespacedName(name, namespace).namespace,
       },
-      role_: hashedName('espejote', [ namespacedName(name).name, 'role' ]),
-      subjects: [ {
-        kind: 'ServiceAccount',
-        name: serviceAccountName(name),
-        namespace: namespacedName(name).namespace,
-      } ],
-    }
-    for name in std.objectFields(params.managedResources)
-    if std.get(params.managedResources[name], 'rules', null) != null
-  ] + [
-    kube._Object('rbac.authorization.k8s.io/v1', 'RoleBinding', 'default') {
-      metadata: {
-        labels: {
-          'app.kubernetes.io/name': hashedName('espejote', [ namespacedName(name).name, 'clusterrole', ref ]),
-        },
-        name: hashedName('espejote', [ namespacedName(name).name, 'clusterrole', ref ]),
-        namespace: namespacedName(name).namespace,
+      name: generatedName,
+    },
+    clusterRole_: hashedName([ namespacedName(name).namespace, namespacedName(name).name ], [ 'clusterrole' ]),
+    subjects: [ {
+      kind: 'ServiceAccount',
+      name: serviceAccountName(name),
+      namespace: namespacedName(name).namespace,
+    } ],
+  }),
+] else [];
+
+local roleFromRules(name) = if std.get(params.managedResources[name], '_rules', null) != null then [
+  processRole({
+    local generatedName = hashedName([ namespacedName(name).name ], [ namespacedName(name).namespace, 'role' ]),
+    apiVersion: 'rbac.authorization.k8s.io/v1',
+    kind: 'Role',
+    metadata: {
+      labels: {
+        'app.kubernetes.io/name': generatedName,
+        'managedresource.espejote.io/name': namespacedName(name, namespace).name,
       },
-      clusterRole_: ref,
-      subjects: [ {
-        kind: 'ServiceAccount',
-        name: serviceAccountName(name),
-        namespace: namespacedName(name).namespace,
-      } ],
-    }
-    for name in std.objectFields(params.managedResources)
-    for ref in std.get(params.managedResources[name], 'clusterRoles', [])
-  ] + [
-    kube._Object('rbac.authorization.k8s.io/v1', 'RoleBinding', 'default') {
-      metadata: {
-        labels: {
-          'app.kubernetes.io/name': hashedName('espejote', [ namespacedName(name).name, 'role', ref ]),
-        },
-        name: hashedName('espejote', [ namespacedName(name).name, 'role', ref ]),
-        namespace: namespacedName(name).namespace,
+      name: generatedName,
+      namespace: namespacedName(name).namespace,
+    },
+    rules_: params.managedResources[name]._rules,
+  }),
+  processRoleBinding({
+    local generatedName = hashedName([ namespacedName(name).name ], [ namespacedName(name).namespace, 'rolebinding' ]),
+    apiVersion: 'rbac.authorization.k8s.io/v1',
+    kind: 'RoleBinding',
+    metadata: {
+      labels: {
+        'app.kubernetes.io/name': generatedName,
+        'managedresource.espejote.io/name': namespacedName(name, namespace).name,
       },
-      role_: ref,
-      subjects: [ {
-        kind: 'ServiceAccount',
-        name: serviceAccountName(name),
-        namespace: namespacedName(name).namespace,
-      } ],
-    }
-    for name in std.objectFields(params.managedResources)
-    for ref in std.get(params.managedResources[name], 'roles', [])
-  ]
-  if rb != null
-];
+      name: generatedName,
+      namespace: namespacedName(name).namespace,
+    },
+    role_: hashedName([ namespacedName(name).name ], [ namespacedName(name).namespace, 'role' ]),
+    subjects: [ {
+      kind: 'ServiceAccount',
+      name: serviceAccountName(name),
+      namespace: namespacedName(name).namespace,
+    } ],
+  }),
+] else [];
+
+local clusterRoleBinding(name) = if std.get(params.managedResources[name], '_clusterRoles', null) != null then [
+  processRoleBinding({
+    local generatedName = hashedName([ namespacedName(name).namespace, namespacedName(name).name ], [ 'clusterrolebinding' ]),
+    apiVersion: 'rbac.authorization.k8s.io/v1',
+    kind: 'ClusterRoleBinding',
+    metadata: {
+      labels: {
+        'app.kubernetes.io/name': generatedName,
+        'managedresource.espejote.io/name': namespacedName(name, namespace).name,
+        'managedresource.espejote.io/namespace': namespacedName(name, namespace).namespace,
+      },
+      name: generatedName,
+    },
+    clusterRole_: ref,
+    subjects: [ {
+      kind: 'ServiceAccount',
+      name: serviceAccountName(name),
+      namespace: namespacedName(name).namespace,
+    } ],
+  })
+  for ref in std.get(params.managedResources[name], '_clusterRoles', [])
+] else [];
+
+local roleBinding(name) = if std.get(params.managedResources[name], '_roles', null) != null then [
+  processRoleBinding({
+    local generatedName = hashedName([ namespacedName(name).namespace, namespacedName(name).name ], [ 'rolebinding' ]),
+    apiVersion: 'rbac.authorization.k8s.io/v1',
+    kind: 'RoleBinding',
+    metadata: {
+      labels: {
+        'app.kubernetes.io/name': generatedName,
+        'managedresource.espejote.io/name': namespacedName(name, namespace).name,
+      },
+      name: generatedName,
+    },
+    role_: ref,
+    subjects: [ {
+      kind: 'ServiceAccount',
+      name: serviceAccountName(name),
+      namespace: namespacedName(name).namespace,
+    } ],
+  })
+  for ref in std.get(params.managedResources[name], '_roles', [])
+] else [];
 
 // Define outputs below
 {
   '00_namespace': namespace,
-  '20_alerts': alerts,
-  '30_jsonnet_libraries': jsonnetLibraries,
-  '60_managed_resources': managedResources,
-  '61_service_accounts': serviceAccounts,
-  '62_roles': roles,
-  '63_role_bindings': roleBindings,
+  '20_aggregated_cluster_role': aggregatedClusterRole,
+  '30_alerts': alerts,
+} + {
+  ['50_jl_%s' % namespacedName(name).name]: jsonnetLibrary(name)
+  for name in std.objectFields(params.jsonnetLibraries)
+} + {
+  ['60_mr_%s_%s' % [ namespacedName(name).namespace, namespacedName(name).name ]]:
+    managedResource(name)
+    + clusterRoleFromRules(name)
+    + roleFromRules(name)
+    + clusterRoleBinding(name)
+    + roleBinding(name)
+  for name in std.objectFields(params.managedResources)
 }

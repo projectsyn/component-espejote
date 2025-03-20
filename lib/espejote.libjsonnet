@@ -8,21 +8,6 @@ local kube = import 'lib/kube.libjsonnet';
 local groupVersion = 'espejote.io/v1alpha1';
 
 /**
-  * \brief Helper to create ClusterManagedResource objects.
-  *
-  * \arg The name of the ClusterManagedResource.
-  * \return A ClusterManagedResource object.
-  */
-local clusterManagedResource(name) = kube._Object(groupVersion, 'ClusterManagedResource', name) {
-  metadata: {
-    labels: {
-      'app.kubernetes.io/name': name,
-    },
-    name: name,
-  },
-};
-
-/**
   * \brief Helper to create ManagedResource objects.
   *
   * \arg The name of the ManagedResource.
@@ -57,7 +42,6 @@ local jsonnetLibrary(name, namespace) = kube._Object(groupVersion, 'JsonnetLibra
 };
 
 {
-  clusterManagedResource: clusterManagedResource,
   managedResource: managedResource,
   jsonnetLibrary: jsonnetLibrary,
 }
