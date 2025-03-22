@@ -98,6 +98,11 @@ The component will automatically create the service account for the managed reso
 If no service account is provided in the spec, the component will create a new one with the same name as the managed resource.
 ====
 
+[NOTE]
+====
+The component will automatically create roles and cluster roles (and their bindings) to read the resources defined in the `triggers` and `context` keys of the managed resource.
+====
+
 == `managedResources.<name>.clusterRules` / `managedResources.<name>.rules`
 
 [horizontal]

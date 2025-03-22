@@ -6,9 +6,10 @@ metadata:
   name: copy-configmap
   namespace: my-namespace
 spec:
-  foo: bar
+  context: []
   serviceAccountRef:
     name: espejote:copy-configmap
+  triggers: []
 ---
 apiVersion: v1
 kind: ServiceAccount

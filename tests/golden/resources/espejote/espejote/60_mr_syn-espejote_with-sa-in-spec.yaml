@@ -6,9 +6,10 @@ metadata:
   name: with-sa-in-spec
   namespace: syn-espejote
 spec:
-  foo: bar
+  context: []
   serviceAccountRef:
     name: sa-in-spec
+  triggers: []
 ---
 apiVersion: v1
 kind: ServiceAccount

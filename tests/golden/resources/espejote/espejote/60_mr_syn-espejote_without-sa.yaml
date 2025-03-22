@@ -6,9 +6,10 @@ metadata:
   name: without-sa
   namespace: syn-espejote
 spec:
-  foo: bar
+  context: []
   serviceAccountRef:
     name: espejote:without-sa
+  triggers: []
 ---
 apiVersion: v1
 kind: ServiceAccount

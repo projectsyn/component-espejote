@@ -18,15 +18,18 @@ parameters:
     managedResources:
       without-sa:
         spec:
-          foo: bar
+          triggers: []
+          context: []
       with-sa:
         spec:
-          foo: bar
+          triggers: []
+          context: []
           serviceAccountRef:
             name: sa-with
       with-sa-in-spec:
         spec:
-          foo: bar
+          triggers: []
+          context: []
           serviceAccountRef:
             name: sa-in-spec
       my-namespace/copy-configmap:
@@ -49,7 +52,8 @@ parameters:
               - get
               - create
         spec:
-          foo: bar
+          triggers: []
+          context: []
       my-namespace/copy-secret:
         _clusterRoles:
           - cluster-admin
@@ -57,6 +61,58 @@ parameters:
           - admin
           - argocd-manager
         spec:
-          foo: bar
+          triggers: []
+          context: []
           serviceAccountRef:
             name: copy-configmap
+      my-namespace/autoroles1:
+        spec:
+          triggers:
+            - name: timer
+              interval: 10s
+            - name: namespace
+              watchResource:
+                apiVersion: v1
+                kind: Namespace
+                labelSelector:
+                  matchExpressions:
+                    - key: managedresource-sample.espejote.io/inject-cm
+                      operator: Exists
+            - name: configmap
+              watchResource:
+                apiVersion: v1
+                kind: ConfigMap
+                namespace: ''
+                name: cm-to-inject
+          context: []
+      my-namespace/autoroles2:
+        spec:
+          triggers:
+            - name: configmap
+              watchResource:
+                apiVersion: v1
+                kind: ConfigMap
+                name: cm-to-inject
+            - name: secret
+              watchResource:
+                apiVersion: v1
+                kind: Secret
+                namespace: my-namespace
+            - name: pod
+              watchResource:
+                apiVersion: v1
+                kind: Pod
+                namespace: other-namespace
+          context:
+            - name: namespaces
+              resource:
+                apiVersion: v1
+                kind: Namespace
+                labelSelector:
+                  matchExpressions:
+                    - key: managedresource-sample.espejote.io/inject-cm
+                      operator: Exists
+            - name: configmap
+              resource:
+                apiVersion: v1
+                kind: ConfigMap
