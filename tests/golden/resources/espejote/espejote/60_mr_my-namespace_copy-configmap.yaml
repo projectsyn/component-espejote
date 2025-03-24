@@ -8,16 +8,16 @@ metadata:
 spec:
   context: []
   serviceAccountRef:
-    name: espejote:copy-configmap
+    name: espejote-copy-configmap
   triggers: []
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   labels:
-    app.kubernetes.io/name: espejote:copy-configmap
+    app.kubernetes.io/name: espejote-copy-configmap
     managedresource.espejote.io/name: copy-configmap
-  name: espejote:copy-configmap
+  name: espejote-copy-configmap
   namespace: my-namespace
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -50,7 +50,7 @@ roleRef:
   name: espejote:my-namespace:copy-configmap:93567fdc30ec585
 subjects:
   - kind: ServiceAccount
-    name: espejote:copy-configmap
+    name: espejote-copy-configmap
     namespace: my-namespace
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -85,5 +85,5 @@ roleRef:
   name: espejote:copy-configmap:8cf42683df3ec0c
 subjects:
   - kind: ServiceAccount
-    name: espejote:copy-configmap
+    name: espejote-copy-configmap
     namespace: my-namespace

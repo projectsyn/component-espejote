@@ -66,6 +66,16 @@ parameters:
           serviceAccountRef:
             name: copy-configmap
       my-namespace/autoroles1:
+        _rules:
+          configmap:
+            apiGroups:
+              - ""
+            resources:
+              - configmap
+            verbs:
+              - patch
+              - delete
+              - create
         spec:
           triggers:
             - name: timer

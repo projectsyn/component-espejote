@@ -8,14 +8,14 @@ metadata:
 spec:
   context: []
   serviceAccountRef:
-    name: espejote:without-sa
+    name: espejote-without-sa
   triggers: []
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   labels:
-    app.kubernetes.io/name: espejote:without-sa
+    app.kubernetes.io/name: espejote-without-sa
     managedresource.espejote.io/name: without-sa
-  name: espejote:without-sa
+  name: espejote-without-sa
   namespace: syn-espejote

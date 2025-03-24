@@ -24,11 +24,11 @@ local hashedName(name, hidden=[]) =
   local hashed = std.substr(std.md5(toHash), 0, 15);
   'espejote:%(unhashed)s:%(hashed)s' % [ unhashed, hashed ];
 
-local serviceAccountName(name) = 'espejote:%s' % std.get(
-  params.managedResources[name].spec,
-  'serviceAccountRef',
-  { name: namespacedName(name).name },
-).name;
+local serviceAccountName(name) =
+  if std.get(params.managedResources[name].spec, 'serviceAccountRef', null) != null then
+    params.managedResources[name].spec.serviceAccountRef.name
+  else
+    'espejote-%s' % namespacedName(name).name;
 
 // Helpers: Extract triggers and context
 

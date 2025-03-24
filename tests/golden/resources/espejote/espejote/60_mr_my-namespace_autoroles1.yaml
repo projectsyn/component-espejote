@@ -8,7 +8,7 @@ metadata:
 spec:
   context: []
   serviceAccountRef:
-    name: espejote:autoroles1
+    name: espejote-autoroles1
   triggers:
     - interval: 10s
       name: timer
@@ -31,10 +31,45 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   labels:
-    app.kubernetes.io/name: espejote:autoroles1
+    app.kubernetes.io/name: espejote-autoroles1
     managedresource.espejote.io/name: autoroles1
-  name: espejote:autoroles1
+  name: espejote-autoroles1
   namespace: my-namespace
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/name: espejote:autoroles1:35ba3620aef872a
+    managedresource.espejote.io/name: autoroles1
+  name: espejote:autoroles1:35ba3620aef872a
+  namespace: my-namespace
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - configmap
+    verbs:
+      - create
+      - delete
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/name: espejote:autoroles1:5179f2520b71e51
+    managedresource.espejote.io/name: autoroles1
+  name: espejote:autoroles1:5179f2520b71e51
+  namespace: my-namespace
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: espejote:autoroles1:35ba3620aef872a
+subjects:
+  - kind: ServiceAccount
+    name: espejote-autoroles1
+    namespace: my-namespace
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -76,5 +111,5 @@ roleRef:
   name: espejote:my-namespace:autoroles1:trigger:113ce796c5401b1
 subjects:
   - kind: ServiceAccount
-    name: espejote:autoroles1
+    name: espejote-autoroles1
     namespace: my-namespace
