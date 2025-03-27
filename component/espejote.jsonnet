@@ -26,6 +26,7 @@ local espejote = com.Kustomization(
     },
   },
   {
+    namespace: params.namespace,
     patchesStrategicMerge: [
       'rm-namespace.yaml',
       std.manifestJson({
