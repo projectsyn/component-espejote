@@ -152,6 +152,9 @@ local roleBinding(mrName) = [
     + roleFromRules(name)
     + clusterRoleBinding(name)
     + roleBinding(name)
-    + espejote.generateRbacObjects(name)
+    + roles.generateRolesContextOrTrigger(name, 'context')
+    + roles.generateBindingsContextOrTrigger(name, 'context')
+    + roles.generateRolesContextOrTrigger(name, 'trigger')
+    + roles.generateBindingsContextOrTrigger(name, 'trigger')
   for name in std.objectFields(params.managedResources)
 }

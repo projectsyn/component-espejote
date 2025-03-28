@@ -46,20 +46,7 @@ local managedResource(name, namespace) = {
   },
 };
 
-/**
-  * \brief Helper to generate RBAC objects to read resources from context and triggers.
-  *
-  * \arg The manifest of the ManagedResource.
-  * \return A list of RBAC objects.
-  */
-local generateRbacObjects(mrName) =  // TODO: Refactor to use with manifest instead of mrName
-  roles.generateRolesContextOrTrigger(mrName, 'context')
-  + roles.generateBindingsContextOrTrigger(mrName, 'context')
-  + roles.generateRolesContextOrTrigger(mrName, 'trigger')
-  + roles.generateBindingsContextOrTrigger(mrName, 'trigger');
-
 {
   jsonnetLibrary: jsonnetLibrary,
   managedResource: managedResource,
-  generateRbacObjects: generateRbacObjects,
 }
