@@ -14,11 +14,6 @@ metadata:
 spec:
   endpoints:
   - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
-    metricRelabelings:
-    - action: keep
-      regex: openshift_upgrade_controller_.+
-      sourceLabels:
-      - __name__
     path: /metrics
     port: https
     scheme: https

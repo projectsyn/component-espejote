@@ -1,0 +1,10 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: espejote
+  name: espejote-selfsigned-issuer
+  namespace: syn-espejote
+spec:
+  selfSigned: {}
