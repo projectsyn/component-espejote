@@ -11,9 +11,267 @@ default:: `syn-espejote`
 The namespace in which to deploy this component.
 
 
+== `manifests_version`
+
+[horizontal]
+type:: string
+default:: `${espejote:images:espejote:tag}`
+
+The Git reference to the controller deployment manifests.
+The default is the tag of the controller image.
+
+
+== `images`
+
+[horizontal]
+type:: dictionary
+default:: See https://github.com/projectsyn/espejote/blob/master/class/defaults.yml[`class/defaults.yml`]
+
+The images to use for this component.
+
+
+== `resources``
+
+type:: dictionary
+default:: See https://github.com/projectsyn/espejote/blob/master/class/defaults.yml[`class/defaults.yml`]
+
+The resources of the deployment.
+
+
+== `jsonnetLibraries`
+
+[horizontal]
+type:: dictionary
++
+[source,yaml]
+----
+jsonnetLibraries:
+  my-lib: <1>
+    metadata: ... <2>
+    spec: ... <3>
+----
+<1> The name of the jsonnet library.
+<2> The metadata of the jsonnet library (optional).
+<3> The spec of the jsonnet library (required).
+
+The jsonnet libraries to deploy.
+
+[NOTE]
+====
+Only shared libraries, i.e. libraries in the component's namespace, are supported.
+====
+
+
+== `managedResources`
+
+[horizontal]
+type:: dictionary
+default:: {}
+
+The managed resources to deploy.
+
+The keys are parsed as namespaced names `<namespace>/<name>` and used as names and namespaces of the managed resource.
+If no namespace is provided the managed resource is created in the fallback namespace provided in the `namespace` parameter.
+
+=== `managedResources.<name>.metadata` / `managedResources.<name>.spec`
+
+[horizontal]
+type:: dictionary
+example::
++
+[source,yaml]
+----
+managedResources:
+  my-namespace/copy-configmap: <1>
+    metadata: ... <2>
+    spec: ... <3>
+----
+<1> The key is parsed as a namespaced managed resource `<namespace>/<name>`.
+<2> The metadata of the managed resource (optional).
+<3> The spec of the managed resource (required).
+
+The metadata and spec of the managed resource.
+
+[NOTE]
+====
+The component will automatically create the service account for the managed resource.
+If no service account is provided in the spec, the component will create a new one with the same name as the managed resource.
+====
+
+[NOTE]
+====
+The component will automatically create roles and cluster roles (and their bindings) to read the resources defined in the `triggers` and `context` keys of the managed resource.
+====
+
+== `managedResources.<name>.clusterRules` / `managedResources.<name>.rules`
+
+[horizontal]
+type:: dictionary
+example::
++
+[source,yaml]
+----
+managedResources:
+  my-namespace/copy-configmap:
+    _rules:
+      configmap: <1>
+        apiGroups:
+          - ""
+        resources:
+          - configmap
+        verbs:
+          - list
+          - get
+          - create
+          - ~delete <2>
+    _clusterRules:
+      namespace:
+        apiGroups:
+          - ""
+        resources:
+          - namespace
+        verbs:
+          - list
+    metadata: ...
+    spec: ...
+----
+<1> This key is ignored by the component, but can be used in the hierarchy to edit existing rules.
+<2> The verbs and resources prefixed with a tilde `~` are removed from the resulting rule, even if they're configured higher up in the configuration hierarchy.
+
+The keys of the `rules` and `clusterRules` dicts are ignored by the component, but can be used in the hierarchy to edit existing rules.
+The component looks for keys `apiGroups`, `resources` and `verbs` in each value of the `rules` and `clusterRules` dicts.
+Each value is transformed into an entry of the role's `rules` list.
+The component expects that the values of fields `apiGroups`, `resources` and `verbs` are lists, and removes entries prefixed with a tilde (`~`) from the final value used for the entry in the role's `rules` list.
+
+[NOTE]
+====
+The component will create a role and a role binding for the given service account from the `rules` key,
+and a cluster role and a cluster role binding for the given service account from the `clusterRules` key.
+====
+
+=== `managedResources.<name>.clusterRoles` / `managedResources.<name>.roles`
+
+[horizontal]
+type:: list
+example::
++
+[source,yaml]
+----
+managedResources:
+  my-namespace/copy-configmap:
+    _clusterRoles:
+      - cluster-admin <1>
+    _roles:
+      - my-role <2>
+    metadata: ...
+    spec: ...
+----
+<1> The name of an existing cluster role.
+<2> The name of an existing role in the given namespace.
+
+The `clusterRoles` and `roles` keys have the same behavior, one creates role bindings for the given roles and the other creates role bindings for the given cluster roles.
+
+
+== `alerts`
+
+[horizontal]
+type:: dictionary
+example::
++
+[source,yaml]
+----
+alerts:
+  BadThingsHappening:
+    enabled: true
+    rule:
+      annotations:
+        description: Bad things have been happening on {{$labels.node}} for more than 10 minutes.
+        message: Bad things have been happening on {{$labels.node}} for more than 10 minutes.
+        runbook_url: https://hub.syn.tools/openshift-upgrade-controller/runbooks/BadThingsHappening.html
+      expr: |
+        bad_thing_happening == 1
+      for: 10m
+      labels:
+        severity: warning
+----
+
+`alerts` defines the alerts to be installed.
+The dictionary key is used as the name of the alert.
+
+
+=== `alerts.<name>.enabled`
+
+[horizontal]
+type:: bool
+
+Defines whether to install the alert.
+
+
+=== `alerts.<name>.rule`
+
+[horizontal]
+type:: dict
+
+Holds the configuration of the alert rule.
+
+See https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/[Prometheus Alerting Rules] for details.
+
+
 == Example
 
 [source,yaml]
 ----
-namespace: example-namespace
+managedResources:
+  my-namespace/inject-configmap:
+    metadata:
+      annotations:
+        description: |
+          Adds a config map called test to any namespace with the label "managedresource-sample.espejote.io/inject-cm".
+
+          If the reconcile was triggered by a trigger as defined in `triggers` it only renders the required config map.
+          If the trigger is unknown or the managed resource itself was changed all config maps are rendered and applied.
+    spec:
+      serviceAccountRef:
+        name: espejote-inject-configmap
+      triggers:
+      - name: namespace
+        watchResource:
+          apiVersion: v1
+          kind: Namespace
+          labelSelector:
+            matchExpressions:
+            - key: managedresource-sample.espejote.io/inject-cm
+              operator: Exists
+      context:
+      - name: namespaces
+        resource:
+          apiVersion: v1
+          kind: Namespace
+          labelSelector:
+            matchExpressions:
+            - key: managedresource-sample.espejote.io/inject-cm
+              operator: Exists
+      template: |
+        local esp = import "espejote.libsonnet";
+        local samplelib = import "jsonnetlibrary-sample/sample.libsonnet";
+        local namespaces = esp.context().namespaces;
+
+        local cmForNs = function(ns) {
+          apiVersion: 'v1',
+          kind: 'ConfigMap',
+          metadata: {
+            name: 'test',
+            namespace: ns.metadata.name,
+          },
+          data: {
+            sample: samplelib.Sample,
+            nsLabel: std.get(ns.metadata.labels, "managedresource-sample.espejote.io/inject-cm"),
+          },
+        };
+
+        if esp.triggerName() == "namespace" then [
+          cmForNs(esp.triggerData().resource),
+        ] else [
+          cmForNs(ns) for ns in namespaces
+        ]
 ----

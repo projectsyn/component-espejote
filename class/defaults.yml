@@ -3,3 +3,34 @@ parameters:
     =_metadata:
       multi_tenant: true
     namespace: syn-espejote
+
+    manifestVersion: ${espejote:images:espejote:tag}
+    kustomizeInput:
+      namespace: ${espejote:namespace}
+
+    images:
+      espejote:
+        registry: ghcr.io
+        repository: vshn/espejote
+        tag: v0.4.0
+
+    resources:
+      espejote:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+      rbac_proxy:
+        requests:
+          cpu: 5m
+          memory: 64Mi
+        limits:
+          cpu: 500m
+          memory: 128Mi
+
+    jsonnetLibraries: {}
+    managedResources: {}
+
+    alerts: {} # TODO: Add alerts

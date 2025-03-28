@@ -1,0 +1,9 @@
+apiVersion: espejote.io/v1alpha1
+kind: JsonnetLibrary
+metadata:
+  labels:
+    app.kubernetes.io/name: my-lib
+  name: my-lib
+  namespace: syn-espejote
+spec:
+  foo: bar

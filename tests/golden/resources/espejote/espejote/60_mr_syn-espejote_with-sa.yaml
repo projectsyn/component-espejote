@@ -1,0 +1,21 @@
+apiVersion: espejote.io/v1alpha1
+kind: ManagedResource
+metadata:
+  labels:
+    app.kubernetes.io/name: with-sa
+  name: with-sa
+  namespace: syn-espejote
+spec:
+  context: []
+  serviceAccountRef:
+    name: sa-with
+  triggers: []
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/name: sa-with
+    managedresource.espejote.io/name: with-sa
+  name: sa-with
+  namespace: syn-espejote

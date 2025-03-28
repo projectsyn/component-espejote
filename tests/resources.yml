@@ -1,0 +1,128 @@
+parameters:
+  espejote:
+    resources:
+      espejote:
+        limits:
+          cpu: 200m
+          memory: 256Mi
+      rbac_proxy:
+        limits:
+          cpu: 1
+          memory: 256Mi
+
+    jsonnetLibraries:
+      my-lib:
+        spec:
+          foo: bar
+
+    managedResources:
+      without-sa:
+        spec:
+          triggers: []
+          context: []
+      with-sa:
+        spec:
+          triggers: []
+          context: []
+          serviceAccountRef:
+            name: sa-with
+      with-sa-in-spec:
+        spec:
+          triggers: []
+          context: []
+          serviceAccountRef:
+            name: sa-in-spec
+      my-namespace/copy-configmap:
+        _clusterRules:
+          namespace:
+            apiGroups:
+              - ""
+            resources:
+              - namespace
+            verbs:
+              - list
+        _rules:
+          configmap:
+            apiGroups:
+              - ""
+            resources:
+              - configmap
+            verbs:
+              - list
+              - get
+              - create
+        spec:
+          triggers: []
+          context: []
+      my-namespace/copy-secret:
+        _clusterRoles:
+          - cluster-admin
+        _roles:
+          - admin
+          - argocd-manager
+        spec:
+          triggers: []
+          context: []
+          serviceAccountRef:
+            name: copy-configmap
+      my-namespace/autoroles1:
+        _rules:
+          configmap:
+            apiGroups:
+              - ""
+            resources:
+              - configmap
+            verbs:
+              - patch
+              - delete
+              - create
+        spec:
+          triggers:
+            - name: timer
+              interval: 10s
+            - name: namespace
+              watchResource:
+                apiVersion: v1
+                kind: Namespace
+                labelSelector:
+                  matchExpressions:
+                    - key: managedresource-sample.espejote.io/inject-cm
+                      operator: Exists
+            - name: configmap
+              watchResource:
+                apiVersion: v1
+                kind: ConfigMap
+                namespace: ''
+                name: cm-to-inject
+          context: []
+      my-namespace/autoroles2:
+        spec:
+          triggers:
+            - name: configmap
+              watchResource:
+                apiVersion: v1
+                kind: ConfigMap
+                name: cm-to-inject
+            - name: secret
+              watchResource:
+                apiVersion: v1
+                kind: Secret
+                namespace: my-namespace
+            - name: pod
+              watchResource:
+                apiVersion: v1
+                kind: Pod
+                namespace: other-namespace
+          context:
+            - name: namespaces
+              resource:
+                apiVersion: v1
+                kind: Namespace
+                labelSelector:
+                  matchExpressions:
+                    - key: managedresource-sample.espejote.io/inject-cm
+                      operator: Exists
+            - name: configmap
+              resource:
+                apiVersion: v1
+                kind: ConfigMap

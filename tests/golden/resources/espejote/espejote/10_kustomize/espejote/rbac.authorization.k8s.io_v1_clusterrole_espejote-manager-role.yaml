@@ -1,0 +1,68 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: espejote-manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts/token
+  verbs:
+  - create
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - espejote.io
+  resources:
+  - admissions
+  - managedresources
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - espejote.io
+  resources:
+  - admissions/finalizers
+  - managedresources/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - espejote.io
+  resources:
+  - admissions/status
+  - managedresources/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - espejote.io
+  resources:
+  - jsonnetlibraries
+  verbs:
+  - get
+  - list
+  - watch
