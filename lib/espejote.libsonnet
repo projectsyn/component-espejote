@@ -28,6 +28,25 @@ local jsonnetLibrary(name, namespace) = {
 };
 
 /**
+  * \brief Helper to create Admission objects.
+  *
+  * \arg The name of the Admission.
+  * \arg The namespace of the ManagedResource.
+  * \return A Admission object.
+  */
+local admission(name, namespace) = {
+  apiVersion: groupVersion,
+  kind: 'Admission',
+  metadata: {
+    labels: {
+      'app.kubernetes.io/name': name,
+    },
+    name: name,
+    namespace: namespace,
+  },
+};
+
+/**
   * \brief Helper to create ManagedResource objects.
   *
   * \arg The name of the ManagedResource.
@@ -47,6 +66,7 @@ local managedResource(name, namespace) = {
 };
 
 {
+  admission: admission,
   jsonnetLibrary: jsonnetLibrary,
   managedResource: managedResource,
 }
