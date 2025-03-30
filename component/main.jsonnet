@@ -3,7 +3,7 @@ local helper = import 'helper.libsonnet';
 local com = import 'lib/commodore.libjsonnet';
 local espejote = import 'lib/espejote.libsonnet';
 local kap = import 'lib/kapitan.libjsonnet';
-local roles = import 'roles.libsonnet';
+local roles = import 'roles_custom.libsonnet';
 local inv = kap.inventory();
 
 // The hiera parameters for the component
@@ -87,7 +87,7 @@ local jsonnetLibrary(jlName) = espejote.jsonnetLibrary(jlName, params.namespace)
 
 // Managed Resources
 
-local managedResource(mrName) = [
+local managedResource(mrName) =
   espejote.managedResource(helper.namespacedName(mrName).name, helper.namespacedName(mrName).namespace) + com.makeMergeable({
     spec+: {
       serviceAccountRef: {
@@ -98,20 +98,20 @@ local managedResource(mrName) = [
     [key]: params.managedResources[mrName][key]
     for key in std.objectFields(params.managedResources[mrName])
     if std.member([ 'metadata', 'spec' ], key)
-  }),
-  {
-    apiVersion: 'v1',
-    kind: 'ServiceAccount',
-    metadata: {
-      labels: {
-        'app.kubernetes.io/name': helper.serviceAccountName(mrName),
-        'managedresource.espejote.io/name': helper.namespacedName(mrName).name,
-      },
-      name: helper.serviceAccountName(mrName),
-      namespace: helper.namespacedName(mrName).namespace,
+  });
+
+local serviceAccount(mrName) = {
+  apiVersion: 'v1',
+  kind: 'ServiceAccount',
+  metadata: {
+    labels: {
+      'app.kubernetes.io/name': helper.serviceAccountName(mrName),
+      'managedresource.espejote.io/name': helper.namespacedName(mrName).name,
     },
+    name: helper.serviceAccountName(mrName),
+    namespace: helper.namespacedName(mrName).namespace,
   },
-];
+};
 
 // Roles and RoleBindings
 
@@ -147,14 +147,12 @@ local roleBinding(mrName) = [
   for name in std.objectFields(params.jsonnetLibraries)
 } + {
   ['60_mr_%s_%s' % [ helper.namespacedName(name).namespace, helper.namespacedName(name).name ]]:
-    managedResource(name)
+    local manifest = managedResource(name);
+    [ manifest, serviceAccount(name) ]
     + clusterRoleFromRules(name)
     + roleFromRules(name)
     + clusterRoleBinding(name)
     + roleBinding(name)
-    + roles.generateRolesContextOrTrigger(name, 'context')
-    + roles.generateBindingsContextOrTrigger(name, 'context')
-    + roles.generateRolesContextOrTrigger(name, 'trigger')
-    + roles.generateBindingsContextOrTrigger(name, 'trigger')
+    + espejote.readingRbacObjects(manifest)
   for name in std.objectFields(params.managedResources)
 }

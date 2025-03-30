@@ -5,8 +5,9 @@
  */
 
 local helper = import 'component/helper.libsonnet';
-local roles = import 'component/roles.libsonnet';
+local roles = import 'component/roles_reading.libsonnet';
 local groupVersion = 'espejote.io/v1alpha1';
+
 
 /**
   * \brief Helper to create JsonnetLibrary objects.
@@ -65,8 +66,22 @@ local managedResource(name, namespace) = {
   },
 };
 
+/**
+  * \brief Helper to generate roles and role bindings for reading referenced resources.
+  *
+  * \arg The ManagedResource.
+  * \return A list of roles and role bindings.
+  */
+local readingRbacObjects(manifest) =
+  roles.generateRolesContextOrTrigger(manifest, 'context')
+  + roles.generateBindingsContextOrTrigger(manifest, 'context')
+  + roles.generateRolesContextOrTrigger(manifest, 'trigger')
+  + roles.generateBindingsContextOrTrigger(manifest, 'trigger');
+
+
 {
   admission: admission,
   jsonnetLibrary: jsonnetLibrary,
   managedResource: managedResource,
+  readingRbacObjects: readingRbacObjects,
 }

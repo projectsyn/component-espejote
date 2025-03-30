@@ -45,66 +45,6 @@ local isContextOrTriggerClusterScoped(obj) =
 
 // Helpers: Generate Roles and RoleBindings
 
-local roleOrBindingName(mrName, clusterScoped, isBinding=false) =
-  local roleOrBinding(clusterScoped) = if isBinding then
-    if clusterScoped then 'clusterrolebinding' else 'rolebinding'
-  else
-    if clusterScoped then 'clusterrole' else 'role';
-  if clusterScoped then
-    hashedName([ namespacedName(mrName).namespace, namespacedName(mrName).name ], [ roleOrBinding(true) ])
-  else
-    hashedName([ namespacedName(mrName).name ], [ namespacedName(mrName).namespace, roleOrBinding(false) ]);
-
-local roleNameContextOrTrigger(mrName, contextOrTriggerWord, contextOrTriggerNamespace, isBinding=false) =
-  local roleOrBinding(clusterScoped) = if isBinding then
-    if clusterScoped then 'clusterrolebinding' else 'rolebinding'
-  else
-    if clusterScoped then 'clusterrole' else 'role';
-  if isNamespaceClusterScoped(contextOrTriggerNamespace) then
-    hashedName([ namespacedName(mrName).namespace, namespacedName(mrName).name, contextOrTriggerWord ], [ roleOrBinding(true) ])
-  else if isDifferentNamespaceThanMr(contextOrTriggerNamespace, mrName) then
-    hashedName([ namespacedName(mrName).namespace, namespacedName(mrName).name, contextOrTriggerWord ], [ roleOrBinding(false) ])
-  else
-    hashedName([ namespacedName(mrName).name, contextOrTriggerWord ], [ contextOrTriggerNamespace, roleOrBinding(false) ]);
-
-// Creates a list of triggers, sorted by the trigger's namespace
-local listContextOrTrigger(mrName, isTrigger=false) =
-  local contextOrTriggerWord = if isTrigger then 'triggers' else 'context';
-  local getResource(item) = if isTrigger then
-    std.get(item, 'watchResource', null)
-  else
-    std.get(item, 'resource', null);
-
-  std.foldl(
-    // Add element to the list of triggers based on the trigger's namespace
-    function(obj, item) (
-      local ns = if isContextOrTriggerClusterScoped(getResource(item)) then params.namespace
-      else if std.get(getResource(item), 'namespace', null) != null then getResource(item).namespace
-      else namespacedName(mrName).namespace;
-      {
-        [namespace]: if namespace == ns then obj[namespace] + [ item ] else obj[namespace]
-        for namespace in std.objectFields(obj)
-      }
-    ),
-    // Extract a list of triggers from the managed resource
-    [
-      item
-      for item in std.get(params.managedResources[mrName].spec, contextOrTriggerWord, [])
-      if getResource(item) != null
-    ],
-    // Generate an empty list of triggers for each namespace
-    {
-      [namespace]: []
-      for namespace in std.uniq([
-        if isContextOrTriggerClusterScoped(getResource(item)) then params.namespace
-        else if std.get(getResource(item), 'namespace', null) != null then getResource(item).namespace
-        else namespacedName(mrName).namespace
-        for item in std.get(params.managedResources[mrName].spec, contextOrTriggerWord, [])
-        if getResource(item) != null
-      ])
-    }
-  );
-
 local processRole(r) = r {
   local extraRules = std.objectValues(
     com.getValueOrDefault(r, 'rules_', {})
@@ -148,9 +88,6 @@ local processRoleBinding(rb) = rb {
   isNamespaceClusterScoped: isNamespaceClusterScoped,
   isDifferentNamespaceThanMr: isDifferentNamespaceThanMr,
   isContextOrTriggerClusterScoped: isContextOrTriggerClusterScoped,
-  roleOrBindingName: roleOrBindingName,
-  roleNameContextOrTrigger: roleNameContextOrTrigger,
-  listContextOrTrigger: listContextOrTrigger,
   processRole: processRole,
   processRoleBinding: processRoleBinding,
 }
