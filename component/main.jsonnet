@@ -3,7 +3,7 @@ local helper = import 'helper.libsonnet';
 local com = import 'lib/commodore.libjsonnet';
 local espejote = import 'lib/espejote.libsonnet';
 local kap = import 'lib/kapitan.libjsonnet';
-local roles = import 'roles_custom.libsonnet';
+local roles = import 'roles.libsonnet';
 local inv = kap.inventory();
 
 // The hiera parameters for the component
