@@ -24,6 +24,11 @@ local espejote = com.Kustomization(
       newTag: params.images.espejote.tag,
       newName: '%(registry)s/%(repository)s' % params.images.espejote,
     },
+    'quay.io/brancz/kube-rbac-proxy': {
+      local image = params.images.kube_rbac_proxy,
+      newTag: image.tag,
+      newName: '%(registry)s/%(image)s' % image,
+    },
   },
   {
     // Inner kustomization layers are immutable, so we need to re-replace the namespace after changing it in an outer layer
