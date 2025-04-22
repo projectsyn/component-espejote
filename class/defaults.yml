@@ -12,7 +12,7 @@ parameters:
       espejote:
         registry: ghcr.io
         repository: vshn/espejote
-        tag: v0.5.2
+        tag: v0.5.3
       kube_rbac_proxy:
         registry: quay.io
         image: brancz/kube-rbac-proxy
