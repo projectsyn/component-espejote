@@ -16,7 +16,7 @@ parameters:
       kube_rbac_proxy:
         registry: quay.io
         image: brancz/kube-rbac-proxy
-        tag: v0.18.2
+        tag: v0.19.1
 
     resources:
       espejote:
