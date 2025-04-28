@@ -14,8 +14,8 @@ local groupVersion = 'espejote.io/v1alpha1';
   * \brief Internal functions to help creating reading RBAC objects.
   */
 local roles = {
-  isNamespaceClusterScoped: function(namespace) (if namespace == inv.parameters.espejote.namespace then true else false),
-  isDifferentNamespaceThanMr: function(compare, mrNamespace) (if compare != mrNamespace then true else false),
+  isNamespaceClusterScoped: function(namespace) namespace == inv.parameters.espejote.namespace,
+  isDifferentNamespaceThanMr: function(compare, mrNamespace) compare != mrNamespace,
 
   // List context or trigger from a managed resource
   listContextOrTrigger: function(mrManifest, isTrigger=false) (
@@ -27,12 +27,9 @@ local roles = {
       std.get(item, 'resource', null);
 
     local isContextOrTriggerClusterScoped(obj) =
-      // The watchResource is of kind Namespace
-      if obj.kind == 'Namespace' then true
-      // The namespace of the watchResource is an empty string
-      else if std.get(obj, 'namespace', null) == '' then true
-      // Defaults to false
-      else false;
+      // Namespaces are a cluster scoped resource, namespaced resources can be read from the whole cluster by setting the namespace to ''.
+      // Default for espejote is to scope the triggers and contexts to the namespace of the managed resource.
+      obj.kind == 'Namespace' || std.get(obj, 'namespace', null) == '';
 
     local _listContextOrTrigger = [
       item
@@ -103,7 +100,7 @@ local roles = {
   },
 
   generateRolesContextOrTrigger: function(mrManifest, contextOrTriggerWord) (
-    local isTrigger = if contextOrTriggerWord == 'trigger' then true else false;
+    local isTrigger = contextOrTriggerWord == 'trigger';
     local contextOrTriggerList = roles.listContextOrTrigger(mrManifest, isTrigger);
     local getResource(item) = if contextOrTriggerWord == 'context' then
       std.get(item, 'resource')
@@ -163,7 +160,7 @@ local roles = {
   },
 
   generateBindingsContextOrTrigger: function(mrManifest, contextOrTriggerWord) (
-    local isTrigger = if contextOrTriggerWord == 'trigger' then true else false;
+    local isTrigger = contextOrTriggerWord == 'trigger';
     local contextOrTriggerList = roles.listContextOrTrigger(mrManifest, isTrigger);
 
     [

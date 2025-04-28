@@ -32,16 +32,13 @@ local serviceAccountName(name) =
 
 // Helpers: Extract triggers and context
 
-local isNamespaceClusterScoped(namespace) = if namespace == params.namespace then true else false;
-local isDifferentNamespaceThanMr(compare, mrName) = if compare != namespacedName(mrName).namespace then true else false;
+local isNamespaceClusterScoped(namespace) = namespace == params.namespace;
+local isDifferentNamespaceThanMr(compare, mrName) = compare != namespacedName(mrName).namespace;
 
 local isContextOrTriggerClusterScoped(obj) =
-  // The watchResource is of kind Namespace
-  if obj.kind == 'Namespace' then true
-  // The namespace of the watchResource is an empty string
-  else if std.get(obj, 'namespace', null) == '' then true
-  // Defaults to false
-  else false;
+  // Namespaces are a cluster scoped resource, namespaced resources can be read from the whole cluster by setting the namespace to ''.
+  // Default for espejote is to scope the triggers and contexts to the namespace of the managed resource.
+  obj.kind == 'Namespace' || std.get(obj, 'namespace', null) == '';
 
 // Helpers: Generate Roles and RoleBindings
 
