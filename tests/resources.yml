@@ -33,31 +33,33 @@ parameters:
           serviceAccountRef:
             name: sa-in-spec
       my-namespace/copy-configmap:
-        _clusterRules:
+        _clusterRoles:
           namespace:
-            apiGroups:
-              - ""
-            resources:
-              - namespace
-            verbs:
-              - list
-        _rules:
+            rules:
+              - apiGroups:
+                  - ""
+                resources:
+                  - namespace
+                verbs:
+                  - list
+        _roles:
           configmap:
-            apiGroups:
-              - ""
-            resources:
-              - configmap
-            verbs:
-              - list
-              - get
-              - create
+            rules:
+              - apiGroups:
+                  - ""
+                resources:
+                  - configmap
+                verbs:
+                  - list
+                  - get
+                  - create
         spec:
           triggers: []
           context: []
       my-namespace/copy-secret:
-        _clusterRoles:
+        _clusterRoleBindings:
           - cluster-admin
-        _roles:
+        _roleBindings:
           - admin
           - argocd-manager
         spec:
@@ -65,17 +67,18 @@ parameters:
           context: []
           serviceAccountRef:
             name: copy-configmap
-      my-namespace/autoroles1:
-        _rules:
+      my-namespace/auto-roles-1:
+        _roles:
           configmap:
-            apiGroups:
-              - ""
-            resources:
-              - configmap
-            verbs:
-              - patch
-              - delete
-              - create
+            rules:
+              - apiGroups:
+                  - ""
+                resources:
+                  - configmap
+                verbs:
+                  - patch
+                  - delete
+                  - create
         spec:
           triggers:
             - name: timer
@@ -94,8 +97,23 @@ parameters:
                 kind: ConfigMap
                 namespace: ''
                 name: cm-to-inject
+            - name: override-namespaced-1
+              watchResource:
+                _namespaced: false
+                apiVersion: v1
+                kind: WeirdlyScopedResource
+            - name: override-namespaced-2
+              watchResource:
+                _namespaced: true
+                apiVersion: v1
+                kind: ClusterWeirdlyScopedResource
+            - name: weird-resource
+              watchResource:
+                _resource: sheep
+                apiVersion: v1
+                kind: Sheep
           context: []
-      my-namespace/autoroles2:
+      my-namespace/auto-roles-2:
         spec:
           triggers:
             - name: configmap

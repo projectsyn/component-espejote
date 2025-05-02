@@ -9,189 +9,6 @@ local kap = import 'lib/kapitan.libjsonnet';
 local inv = kap.inventory();
 local groupVersion = 'espejote.io/v1alpha1';
 
-
-/**
-  * \brief Internal functions to help creating reading RBAC objects.
-  */
-local roles = {
-  isNamespaceClusterScoped: function(namespace) namespace == inv.parameters.espejote.namespace,
-  isDifferentNamespaceThanMr: function(compare, mrNamespace) compare != mrNamespace,
-
-  // List context or trigger from a managed resource
-  listContextOrTrigger: function(mrManifest, isTrigger=false) (
-    local contextOrTriggerWord = if isTrigger then 'triggers' else 'context';
-
-    local getResource(item) = if isTrigger then
-      std.get(item, 'watchResource', null)
-    else
-      std.get(item, 'resource', null);
-
-    local isContextOrTriggerClusterScoped(obj) =
-      // Namespaces are a cluster scoped resource, namespaced resources can be read from the whole cluster by setting the namespace to ''.
-      // Default for espejote is to scope the triggers and contexts to the namespace of the managed resource.
-      obj.kind == 'Namespace' || std.get(obj, 'namespace', null) == '';
-
-    local _listContextOrTrigger = [
-      item
-      for item in std.get(mrManifest.spec, contextOrTriggerWord, [])
-      if getResource(item) != null
-    ];
-
-    std.foldl(
-      // Add element to the list of triggers based on the trigger's namespace
-      function(obj, item) (
-        local ns = if isContextOrTriggerClusterScoped(getResource(item)) then inv.parameters.espejote.namespace
-        else if std.get(getResource(item), 'namespace', null) != null then getResource(item).namespace
-        else mrManifest.metadata.namespace;
-        {
-          [namespace]: if namespace == ns then obj[namespace] + [ item ] else obj[namespace]
-          for namespace in std.objectFields(obj)
-        }
-      ),
-      // List of triggers from the managed resource
-      _listContextOrTrigger,
-      // Generate an empty list of triggers for each namespace
-      {
-        [namespace]: []
-        for namespace in std.uniq([
-          if isContextOrTriggerClusterScoped(getResource(item)) then inv.parameters.espejote.namespace
-          else if std.get(getResource(item), 'namespace', null) != null then getResource(item).namespace
-          else mrManifest.metadata.namespace
-          for item in _listContextOrTrigger
-        ])
-      }
-    )
-  ),
-
-  // Generate role names
-  roleNameContextOrTrigger: function(mrManifest, contextOrTriggerWord, contextOrTriggerNamespace, isBinding=false) (
-    local hashedName(name, hidden=[]) =
-      // Ensure the total length of the name is less than 63 characters
-      // 63 - `espejote` - 2x `:` - hash length = 38
-      local unhashed = std.substr(std.join(':', name), 0, 38);
-      local toHash = std.join(':', name + hidden);
-      local hashed = std.substr(std.md5(toHash), 0, 15);
-      'espejote:%(unhashed)s:%(hashed)s' % [ unhashed, hashed ];
-
-    local roleOrBinding(clusterScoped) = if isBinding then
-      if clusterScoped then 'clusterrolebinding' else 'rolebinding'
-    else
-      if clusterScoped then 'clusterrole' else 'role';
-
-    if roles.isNamespaceClusterScoped(contextOrTriggerNamespace) then
-      hashedName([ mrManifest.metadata.namespace, mrManifest.metadata.name, contextOrTriggerWord ], [ roleOrBinding(true) ])
-    else if roles.isDifferentNamespaceThanMr(contextOrTriggerNamespace, mrManifest.metadata.namespace) then
-      hashedName([ mrManifest.metadata.namespace, mrManifest.metadata.name, contextOrTriggerWord ], [ roleOrBinding(false) ])
-    else
-      hashedName([ mrManifest.metadata.name, contextOrTriggerWord ], [ contextOrTriggerNamespace, roleOrBinding(false) ])
-  ),
-
-  // Generate roles
-  processRole: function(r) r {
-    local extraRules = std.objectValues(
-      com.getValueOrDefault(r, 'rules_', {})
-    ),
-    rules_:: null,
-    rules+: [ {
-      apiGroups: com.renderArray(rule.apiGroups),
-      resources: com.renderArray(rule.resources),
-      verbs: com.renderArray(rule.verbs),
-    } for rule in extraRules ],
-  },
-
-  generateRolesContextOrTrigger: function(mrManifest, contextOrTriggerWord) (
-    local isTrigger = contextOrTriggerWord == 'trigger';
-    local contextOrTriggerList = roles.listContextOrTrigger(mrManifest, isTrigger);
-    local getResource(item) = if contextOrTriggerWord == 'context' then
-      std.get(item, 'resource')
-    else
-      std.get(item, 'watchResource');
-
-    [
-      local clusterScoped = roles.isNamespaceClusterScoped(contextOrTriggerNamespace);
-      local roleName = roles.roleNameContextOrTrigger(mrManifest, contextOrTriggerWord, contextOrTriggerNamespace);
-      roles.processRole({
-        apiVersion: 'rbac.authorization.k8s.io/v1',
-        kind: if clusterScoped then 'ClusterRole' else 'Role',
-        metadata: {
-          labels: {
-            'app.kubernetes.io/name': roleName,
-            'managedresource.espejote.io/name': mrManifest.metadata.name,
-            [if clusterScoped || roles.isDifferentNamespaceThanMr(contextOrTriggerNamespace, mrManifest.metadata.namespace) then 'managedresource.espejote.io/namespace']: mrManifest.metadata.namespace,
-          },
-          name: roleName,
-          [if !clusterScoped then 'namespace']: contextOrTriggerNamespace,
-        },
-        rules_: {
-          [item.name]: {
-            apiGroups: [ getResource(item).apiVersion ],
-            resources: [ std.asciiLower(getResource(item).kind) ],
-            verbs: [ 'get', 'list', 'watch' ],
-          }
-          for item in contextOrTriggerList[contextOrTriggerNamespace]
-        },
-      })
-      for contextOrTriggerNamespace in std.objectFields(contextOrTriggerList)
-    ]
-  ),
-
-  // Generate role bindings
-  processRoleBinding: function(rb) rb {
-    local rbNs = com.getValueOrDefault(rb.metadata, 'namespace', ''),
-
-    roleRef+:
-      {
-        apiGroup: 'rbac.authorization.k8s.io',
-      }
-      +
-      if std.objectHas(rb, 'role_') && std.objectHas(rb, 'clusterRole_') then error 'cannot specify both "role_" and "clusterRole_"'
-      else if std.objectHas(rb, 'role_') then {
-        kind: 'Role',
-        name: rb.role_,
-      }
-      else if std.objectHas(rb, 'clusterRole_') then {
-        kind: 'ClusterRole',
-        name: rb.clusterRole_,
-      }
-      else {},
-
-    role_:: null,
-    clusterRole_:: null,
-  },
-
-  generateBindingsContextOrTrigger: function(mrManifest, contextOrTriggerWord) (
-    local isTrigger = contextOrTriggerWord == 'trigger';
-    local contextOrTriggerList = roles.listContextOrTrigger(mrManifest, isTrigger);
-
-    [
-      local clusterScoped = roles.isNamespaceClusterScoped(contextOrTriggerNamespace);
-      local roleName = roles.roleNameContextOrTrigger(mrManifest, contextOrTriggerWord, contextOrTriggerNamespace);
-      local roleBindingName = roles.roleNameContextOrTrigger(mrManifest, contextOrTriggerWord, contextOrTriggerNamespace, true);
-      roles.processRoleBinding({
-        apiVersion: 'rbac.authorization.k8s.io/v1',
-        kind: if clusterScoped then 'ClusterRoleBinding' else 'RoleBinding',
-        metadata: {
-          labels: {
-            'app.kubernetes.io/name': roleBindingName,
-            'managedresource.espejote.io/name': mrManifest.metadata.name,
-            [if clusterScoped || roles.isDifferentNamespaceThanMr(contextOrTriggerNamespace, mrManifest.metadata.namespace) then 'managedresource.espejote.io/namespace']: mrManifest.metadata.namespace,
-          },
-          name: roleBindingName,
-          [if !clusterScoped then 'namespace']: contextOrTriggerNamespace,
-        },
-        [if clusterScoped then 'clusterRole_' else 'role_']: roleName,
-        subjects: [ {
-          kind: 'ServiceAccount',
-          name: mrManifest.spec.serviceAccountRef.name,
-          namespace: mrManifest.metadata.namespace,
-        } ],
-      })
-      for contextOrTriggerNamespace in std.objectFields(contextOrTriggerList)
-    ]
-  ),
-};
-
-
 /**
   * \brief Helper to create JsonnetLibrary objects.
   *
@@ -249,22 +66,144 @@ local managedResource(name, namespace) = {
   },
 };
 
-/**
-  * \brief Helper to generate roles and role bindings for reading referenced resources.
-  *
-  * \arg The ManagedResource.
-  * \return A list of roles and role bindings.
-  */
-local readingRbacObjects(manifest) =
-  roles.generateRolesContextOrTrigger(manifest, 'context')
-  + roles.generateBindingsContextOrTrigger(manifest, 'context')
-  + roles.generateRolesContextOrTrigger(manifest, 'trigger')
-  + roles.generateBindingsContextOrTrigger(manifest, 'trigger');
 
+local generateRolesForManagedResource(manifest) =
+  local manifestMeta = std.get(manifest, 'metadata', {});
+  assert std.get(manifestMeta, 'name') != null : 'name is required';
+  assert std.get(manifestMeta, 'namespace') != null : 'namespace is required';
+  local manifestSpec = std.get(manifest, 'spec', {});
+
+  local clusterScoped(resource) =
+    if std.get(resource, '_namespaced') != null then
+      !std.get(resource, '_namespaced')
+    else
+      resource.kind == 'Namespace' || std.startsWith(resource.kind, 'Cluster') || std.get(resource, 'namespace') == '';
+
+  local groupFromAPIVersion(apiVersion) =
+    local parts = std.split(apiVersion, '/');
+    if std.length(parts) == 1 then
+      ''
+    else
+      parts[0];
+
+  // Guesses the resource from the resource kind.
+  // Inspired by https://github.com/kubernetes/apimachinery/blob/954960919938450fb6d06065f4bf92855dda73fd/pkg/api/meta/restmapper.go#L126
+  local guessResourceFromKind(kind) =
+    local singular = std.asciiLower(kind);
+    local irregular = {
+      endpoints: 'endpoints',
+    };
+
+    if std.objectHas(irregular, singular) then
+      irregular[singular]
+    else if std.endsWith(singular, 's') || std.endsWith(singular, 'ch') || std.endsWith(singular, 'x') then
+      singular + 'es'
+    else if std.endsWith(singular, 'y') then
+      std.substr(singular, 0, std.length(singular) - 1) + 'ies'
+    else
+      singular + 's';
+
+  local roleFromResource(suffixes, resource) = {
+    local resourceNs = std.get(resource, 'namespace', manifestMeta.namespace),
+    apiVersion: 'rbac.authorization.k8s.io/v1',
+    kind: if clusterScoped(resource) then 'ClusterRole' else 'Role',
+    metadata: {
+      [if !clusterScoped(resource) then 'namespace']: resourceNs,
+      name: std.join(':', std.prune([
+        'managedresource',
+        if clusterScoped(resource) || manifestMeta.namespace != resourceNs then manifestMeta.namespace,
+        manifestMeta.name,
+      ] + suffixes)),
+    },
+    rules: [
+      {
+        apiGroups: [ groupFromAPIVersion(std.get(resource, 'apiVersion', '')) ],
+        resources: [
+          std.get(resource, '_resource', guessResourceFromKind(resource.kind)),
+        ],
+        verbs: [ 'get', 'list', 'watch' ],
+      },
+    ],
+  };
+
+  [
+    roleFromResource([ 'triggers', item.name ], item.watchResource)
+    for item in std.get(manifestSpec, 'triggers', [])
+    if std.get(std.get(item, 'watchResource', {}), 'kind', '') != ''
+  ] + [
+    roleFromResource([ 'context', item.name ], item.resource)
+    for item in std.get(manifestSpec, 'context', [])
+    if std.get(std.get(item, 'resource', {}), 'kind', '') != ''
+  ];
+
+local bindRoles(saNamespace, saName, roles) = [
+  {
+    apiVersion: 'rbac.authorization.k8s.io/v1',
+    kind: role.kind + 'Binding',
+    metadata: {
+      name: role.metadata.name,
+      [if std.objectHas(role.metadata, 'namespace') then 'namespace']: role.metadata.namespace,
+    },
+    roleRef: {
+      apiGroup: 'rbac.authorization.k8s.io',
+      kind: role.kind,
+      name: role.metadata.name,
+    },
+    subjects: [
+      {
+        kind: 'ServiceAccount',
+        name: saName,
+        namespace: saNamespace,
+      },
+    ],
+  }
+  for role in roles
+];
+
+local hideInternalKeys(manifest) = manifest {
+  spec+: {
+    triggers: [
+      if std.objectHas(item, 'watchResource') then
+        item {
+          watchResource: item.watchResource {
+            _namespaced:: item.watchResource._namespaced,
+            _resource:: item.watchResource._resource,
+          },
+        }
+      else
+        item
+      for item in std.get(manifest.spec, 'triggers', [])
+    ],
+    context: [
+      if std.objectHas(item, 'resource') then
+        item {
+          resource: item.resource {
+            _namespaced:: item.resource._namespaced,
+            _resource:: item.resource._resource,
+          },
+        }
+      else
+        item
+      for item in std.get(manifest.spec, 'context', [])
+    ],
+  },
+};
+
+local serviceAccountNameForManagedResource(manifest, default='default') =
+  std.get(std.get(std.get(manifest, 'spec', {}), 'serviceAccountRef', {}), 'name', default);
 
 {
   admission: admission,
   jsonnetLibrary: jsonnetLibrary,
   managedResource: managedResource,
-  readingRbacObjects: readingRbacObjects,
+
+  serviceAccountNameForManagedResource: serviceAccountNameForManagedResource,
+
+  readingRbacObjects: function(manifest)
+    local roles = generateRolesForManagedResource(manifest);
+    [ hideInternalKeys(manifest) ] + roles + bindRoles(
+      manifest.metadata.namespace,
+      serviceAccountNameForManagedResource(manifest),
+      roles
+    ),
 }
