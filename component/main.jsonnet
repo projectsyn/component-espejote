@@ -1,14 +1,18 @@
 // main template for espejote
-local helper = import 'helper.libsonnet';
 local com = import 'lib/commodore.libjsonnet';
 local espejote = import 'lib/espejote.libsonnet';
 local kap = import 'lib/kapitan.libjsonnet';
-local roles = import 'roles.libsonnet';
 local inv = kap.inventory();
 
 // The hiera parameters for the component
 local params = inv.parameters.espejote;
 local isOpenshift = std.member([ 'openshift4', 'oke' ], inv.parameters.facts.distribution);
+
+local namespacedName(name, namespace=params.namespace) = {
+  local namespacedName = std.splitLimit(name, '/', 1),
+  namespace: if std.length(namespacedName) > 1 then namespacedName[0] else namespace,
+  name: if std.length(namespacedName) > 1 then namespacedName[1] else namespacedName[0],
+};
 
 // Namespace
 
@@ -81,80 +85,154 @@ local alerts = {
   },
 };
 
+local serviceAccountName(name) =
+  espejote.serviceAccountNameFromManagedResource(
+    params.managedResources[name].spec,
+    'espejote-%s' % namespacedName(name).name
+  );
+
 // Jsonnet Libraries
 
-local jsonnetLibrary(jlName) = espejote.jsonnetLibrary(jlName, params.namespace) + com.makeMergeable(params.jsonnetLibraries[jlName]);
+local jsonnetLibrary(jlPath) =
+  local nsName = namespacedName(jlPath);
+  espejote.jsonnetLibrary(nsName.name, nsName.namespace) + com.makeMergeable(params.jsonnetLibraries[jlPath]);
 
 // Managed Resources
 
-local managedResource(mrName) = [
-  espejote.managedResource(helper.namespacedName(mrName).name, helper.namespacedName(mrName).namespace) + com.makeMergeable({
+local managedResource(mrName) =
+  espejote.managedResource(namespacedName(mrName).name, namespacedName(mrName).namespace) + com.makeMergeable({
     spec+: {
       serviceAccountRef: {
-        name: helper.serviceAccountName(mrName),
+        name: serviceAccountName(mrName),
       },
     },
   }) + com.makeMergeable({
     [key]: params.managedResources[mrName][key]
     for key in std.objectFields(params.managedResources[mrName])
     if std.member([ 'metadata', 'spec' ], key)
-  }),
-  {
-    apiVersion: 'v1',
-    kind: 'ServiceAccount',
+  });
+
+local serviceAccount(mrName) = {
+  apiVersion: 'v1',
+  kind: 'ServiceAccount',
+  metadata: {
+    labels: {
+      'app.kubernetes.io/name': serviceAccountName(mrName),
+      'managedresource.espejote.io/name': namespacedName(mrName).name,
+    },
+    name: serviceAccountName(mrName),
+    namespace: namespacedName(mrName).namespace,
+  },
+};
+
+local role(prefix, defaultNamespace) =
+  function(path) {
+    local nsName = namespacedName(path, namespace=defaultNamespace),
+    apiVersion: 'rbac.authorization.k8s.io/v1',
+    kind: 'Role',
     metadata: {
       labels: {
-        'app.kubernetes.io/name': helper.serviceAccountName(mrName),
-        'managedresource.espejote.io/name': helper.namespacedName(mrName).name,
+        'app.kubernetes.io/name': prefix + nsName.name,
       },
-      name: helper.serviceAccountName(mrName),
-      namespace: helper.namespacedName(mrName).namespace,
+      name: prefix + nsName.name,
+      namespace: nsName.namespace,
     },
-  },
-];
+  };
 
-// Roles and RoleBindings
+local clusterRole(prefix) =
+  function(path)
+    role(prefix, null)(path) + {
+      kind: 'ClusterRole',
+      metadata+: {
+        namespace:: null,
+      },
+    };
 
-local clusterRoleFromRules(mrName) = if std.get(params.managedResources[mrName], '_clusterRules', null) != null then
-  local rules = params.managedResources[mrName]._clusterRules;
-  local role = roles.generateRole(mrName, rules, true);
-  local roleBinding = roles.generateBinding(mrName, role.metadata.name, true);
-  [ role, roleBinding ] else [];
+local roleBinding(roleNamePrefix) =
+  function(roleNs, roleName, saNs, saName) {
+    local bindingName = std.join(':', std.prune([ 'espejote', 'supplemental', roleName, if saNs != roleNs then saNs, saName ])),
+    apiVersion: 'rbac.authorization.k8s.io/v1',
+    kind: 'RoleBinding',
+    metadata: {
+      labels: {
+        'app.kubernetes.io/name': bindingName,
+      },
+      name: bindingName,
+      [if roleNs != null then 'namespace']: roleNs,
+    },
+    roleRef: {
+      apiGroup: 'rbac.authorization.k8s.io',
+      kind: 'Role',
+      name: roleNamePrefix + roleName,
+    },
+    subjects: [
+      {
+        kind: 'ServiceAccount',
+        name: saName,
+        namespace: saNs,
+      },
+    ],
+  };
 
-local roleFromRules(mrName) = if std.get(params.managedResources[mrName], '_rules', null) != null then
-  local rules = params.managedResources[mrName]._rules;
-  local role = roles.generateRole(mrName, rules, false);
-  local roleBinding = roles.generateBinding(mrName, role.metadata.name, false);
-  [ role, roleBinding ] else [];
+local clusterRoleBinding(roleNamePrefix) =
+  function(roleName, saNs, saName)
+    roleBinding(roleNamePrefix)(null, roleName, saNs, saName) + {
+      kind: 'ClusterRoleBinding',
+    };
 
-local clusterRoleBinding(mrName) = [
-  roles.generateBinding(mrName, roleName, true)
-  for roleName in com.renderArray(std.get(params.managedResources[mrName], '_clusterRoles', []))
-];
+local roleBindingsForManagedResourceAndRoles(roleNamePrefix) =
+  function(managedResourcePath, rolePaths)
+    local mrNs = namespacedName(managedResourcePath).namespace;
+    std.map(function(rp)
+      local roleNsName = namespacedName(rp, namespace=mrNs);
+      roleBinding(roleNamePrefix)(
+        roleNsName.namespace,
+        roleNsName.name,
+        mrNs,
+        serviceAccountName(managedResourcePath),
+      ), rolePaths);
 
-local roleBinding(mrName) = [
-  roles.generateBinding(mrName, roleName, false)
-  for roleName in com.renderArray(std.get(params.managedResources[mrName], '_roles', []))
-];
+local clusterRoleBindingsForManagedResourceAndRoles(roleNamePrefix) =
+  function(managedResourcePath, rolePaths)
+    std.map(function(rp) clusterRoleBinding(roleNamePrefix)(
+      namespacedName(rp).name,
+      namespacedName(managedResourcePath).namespace,
+      serviceAccountName(managedResourcePath),
+    ), rolePaths);
+
+local supplementalRoles = std.prune({
+  ['43_supplemental_role_%(namespace)s_%(name)s' % namespacedName(path)]:
+    local roles = std.get(params.managedResources[path], '_roles', {});
+    local mrNsName = namespacedName(path);
+    local roleNamePrefix = std.join(':', [ 'espejote', 'supplemental', mrNsName.namespace, mrNsName.name, '' ]);
+    com.generateResources(roles, role(roleNamePrefix, mrNsName.namespace)) +
+    roleBindingsForManagedResourceAndRoles(roleNamePrefix)(path, std.objectFields(roles)) +
+    roleBindingsForManagedResourceAndRoles(roleNamePrefix)(path, std.get(params.managedResources[path], '_roleBindings', []))
+  for path in std.objectFields(params.managedResources)
+});
+
+local supplementalClusterRoles = std.prune({
+  [if std.length(std.get(params.managedResources[path], '_clusterRoles', {})) > 0 then '44_supplemental_cluster_role_%(namespace)s_%(name)s' % namespacedName(path)]:
+    local roles = std.get(params.managedResources[path], '_clusterRoles', {});
+    local mrNsName = namespacedName(path);
+    local roleNamePrefix = std.join(':', [ 'espejote', 'supplemental', mrNsName.namespace, mrNsName.name, '' ]);
+    com.generateResources(roles, clusterRole(roleNamePrefix)) +
+    clusterRoleBindingsForManagedResourceAndRoles(roleNamePrefix)(path, std.objectFields(roles)) +
+    clusterRoleBindingsForManagedResourceAndRoles(roleNamePrefix)(path, std.get(params.managedResources[path], '_clusterRoleBindings', []))
+  for path in std.objectFields(params.managedResources)
+});
 
 // Define outputs below
 {
   '00_namespace': namespace,
   '20_aggregated_cluster_role': aggregatedClusterRole,
   '30_alerts': alerts,
-} + {
-  ['50_jl_%s' % helper.namespacedName(name).name]: jsonnetLibrary(name)
+} + supplementalRoles + supplementalClusterRoles + {
+  ['50_jl_%(namespace)s_%(name)s' % namespacedName(name)]: jsonnetLibrary(name)
   for name in std.objectFields(params.jsonnetLibraries)
 } + {
-  ['60_mr_%s_%s' % [ helper.namespacedName(name).namespace, helper.namespacedName(name).name ]]:
-    managedResource(name)
-    + clusterRoleFromRules(name)
-    + roleFromRules(name)
-    + clusterRoleBinding(name)
-    + roleBinding(name)
-    + roles.generateRolesContextOrTrigger(name, 'context')
-    + roles.generateBindingsContextOrTrigger(name, 'context')
-    + roles.generateRolesContextOrTrigger(name, 'trigger')
-    + roles.generateBindingsContextOrTrigger(name, 'trigger')
+  ['60_mr_%s_%s' % [ namespacedName(name).namespace, namespacedName(name).name ]]:
+    local manifest = managedResource(name);
+    [ serviceAccount(name) ] + espejote.createContextRBAC(manifest)
   for name in std.objectFields(params.managedResources)
 }

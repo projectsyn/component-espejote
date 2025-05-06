@@ -11,9 +11,14 @@ parameters:
           memory: 256Mi
 
     jsonnetLibraries:
+      a/my-lib:
+        spec:
+          data:
+            foo: bar
       my-lib:
         spec:
-          foo: bar
+          data:
+            foo: bar
 
     managedResources:
       without-sa:
@@ -33,31 +38,38 @@ parameters:
           serviceAccountRef:
             name: sa-in-spec
       my-namespace/copy-configmap:
-        _clusterRules:
+        _clusterRoles:
           namespace:
-            apiGroups:
-              - ""
-            resources:
-              - namespace
-            verbs:
-              - list
-        _rules:
-          configmap:
-            apiGroups:
-              - ""
-            resources:
-              - configmap
-            verbs:
-              - list
-              - get
-              - create
+            rules:
+              - apiGroups:
+                  - ""
+                resources:
+                  - namespaces
+                verbs:
+                  - list
+        _roles:
+          configmaps:
+            rules:
+              - apiGroups: [""]
+                resources: [configmaps]
+                verbs: [patch]
+          a/configmaps:
+            rules:
+              - apiGroups: [""]
+                resources: [configmaps]
+                verbs: [patch]
+          b/configmaps:
+            rules:
+              - apiGroups: [""]
+                resources: [configmaps]
+                verbs: [patch]
         spec:
           triggers: []
           context: []
       my-namespace/copy-secret:
-        _clusterRoles:
+        _clusterRoleBindings:
           - cluster-admin
-        _roles:
+        _roleBindings:
           - admin
           - argocd-manager
         spec:
@@ -65,17 +77,18 @@ parameters:
           context: []
           serviceAccountRef:
             name: copy-configmap
-      my-namespace/autoroles1:
-        _rules:
-          configmap:
-            apiGroups:
-              - ""
-            resources:
-              - configmap
-            verbs:
-              - patch
-              - delete
-              - create
+      my-namespace/auto-roles-1:
+        _roles:
+          espejote-update-configmaps:
+            rules:
+              - apiGroups:
+                  - ""
+                resources:
+                  - configmaps
+                verbs:
+                  - patch
+                  - delete
+                  - create
         spec:
           triggers:
             - name: timer
@@ -94,8 +107,23 @@ parameters:
                 kind: ConfigMap
                 namespace: ''
                 name: cm-to-inject
+            - name: override-namespaced-1
+              watchResource:
+                _namespaced: false
+                apiVersion: v1
+                kind: WeirdlyScopedResource
+            - name: override-namespaced-2
+              watchResource:
+                _namespaced: true
+                apiVersion: v1
+                kind: ClusterWeirdlyScopedResource
+            - name: weird-resource
+              watchResource:
+                _resource: sheep
+                apiVersion: cattle.farmersdelight.io/v1
+                kind: Sheep
           context: []
-      my-namespace/autoroles2:
+      my-namespace/auto-roles-2:
         spec:
           triggers:
             - name: configmap
