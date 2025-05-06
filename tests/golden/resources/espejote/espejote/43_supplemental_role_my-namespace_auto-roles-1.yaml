@@ -2,14 +2,14 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   labels:
-    app.kubernetes.io/name: configmap
-  name: configmap
-  namespace: syn-espejote
+    app.kubernetes.io/name: espejote:supplemental:my-namespace:auto-roles-1:espejote-update-configmaps
+  name: espejote:supplemental:my-namespace:auto-roles-1:espejote-update-configmaps
+  namespace: my-namespace
 rules:
   - apiGroups:
       - ''
     resources:
-      - configmap
+      - configmaps
     verbs:
       - patch
       - delete
@@ -19,13 +19,13 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   labels:
-    app.kubernetes.io/name: espejote:supplemental:configmap:my-namespace:espejote-auto-roles-1
-  name: espejote:supplemental:configmap:my-namespace:espejote-auto-roles-1
-  namespace: syn-espejote
+    app.kubernetes.io/name: espejote:supplemental:espejote-update-configmaps:espejote-auto-roles-1
+  name: espejote:supplemental:espejote-update-configmaps:espejote-auto-roles-1
+  namespace: my-namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: configmap
+  name: espejote:supplemental:my-namespace:auto-roles-1:espejote-update-configmaps
 subjects:
   - kind: ServiceAccount
     name: espejote-auto-roles-1

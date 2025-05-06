@@ -4,6 +4,7 @@ metadata:
   labels:
     app.kubernetes.io/name: my-lib
   name: my-lib
-  namespace: syn-espejote
+  namespace: a
 spec:
-  foo: bar
+  data:
+    foo: bar

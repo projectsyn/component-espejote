@@ -2,30 +2,90 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   labels:
-    app.kubernetes.io/name: configmap
-  name: configmap
-  namespace: syn-espejote
+    app.kubernetes.io/name: espejote:supplemental:my-namespace:copy-configmap:configmaps
+  name: espejote:supplemental:my-namespace:copy-configmap:configmaps
+  namespace: a
 rules:
   - apiGroups:
       - ''
     resources:
-      - configmap
+      - configmaps
     verbs:
-      - list
-      - get
-      - create
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/name: espejote:supplemental:my-namespace:copy-configmap:configmaps
+  name: espejote:supplemental:my-namespace:copy-configmap:configmaps
+  namespace: b
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - configmaps
+    verbs:
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/name: espejote:supplemental:my-namespace:copy-configmap:configmaps
+  name: espejote:supplemental:my-namespace:copy-configmap:configmaps
+  namespace: my-namespace
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - configmaps
+    verbs:
+      - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   labels:
-    app.kubernetes.io/name: espejote:supplemental:configmap:my-namespace:espejote-copy-configmap
-  name: espejote:supplemental:configmap:my-namespace:espejote-copy-configmap
-  namespace: syn-espejote
+    app.kubernetes.io/name: espejote:supplemental:configmaps:my-namespace:espejote-copy-configmap
+  name: espejote:supplemental:configmaps:my-namespace:espejote-copy-configmap
+  namespace: a
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: configmap
+  name: espejote:supplemental:my-namespace:copy-configmap:configmaps
+subjects:
+  - kind: ServiceAccount
+    name: espejote-copy-configmap
+    namespace: my-namespace
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/name: espejote:supplemental:configmaps:my-namespace:espejote-copy-configmap
+  name: espejote:supplemental:configmaps:my-namespace:espejote-copy-configmap
+  namespace: b
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: espejote:supplemental:my-namespace:copy-configmap:configmaps
+subjects:
+  - kind: ServiceAccount
+    name: espejote-copy-configmap
+    namespace: my-namespace
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/name: espejote:supplemental:configmaps:espejote-copy-configmap
+  name: espejote:supplemental:configmaps:espejote-copy-configmap
+  namespace: my-namespace
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: espejote:supplemental:my-namespace:copy-configmap:configmaps
 subjects:
   - kind: ServiceAccount
     name: espejote-copy-configmap

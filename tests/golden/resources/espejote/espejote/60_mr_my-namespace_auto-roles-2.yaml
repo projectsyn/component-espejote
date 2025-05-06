@@ -50,7 +50,7 @@ spec:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: managedresource:auto-roles-2:triggers:configmap
+  name: espejote:managedresource:auto-roles-2:triggers:configmap
   namespace: my-namespace
 rules:
   - apiGroups:
@@ -65,7 +65,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: managedresource:auto-roles-2:triggers:secret
+  name: espejote:managedresource:auto-roles-2:triggers:secret
   namespace: my-namespace
 rules:
   - apiGroups:
@@ -80,7 +80,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: managedresource:my-namespace:auto-roles-2:triggers:pod
+  name: espejote:managedresource:my-namespace:auto-roles-2:triggers:pod
   namespace: other-namespace
 rules:
   - apiGroups:
@@ -95,7 +95,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: managedresource:my-namespace:auto-roles-2:context:namespaces
+  name: espejote:managedresource:my-namespace:auto-roles-2:context:namespaces
 rules:
   - apiGroups:
       - ''
@@ -109,7 +109,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: managedresource:auto-roles-2:context:configmap
+  name: espejote:managedresource:auto-roles-2:context:configmap
   namespace: my-namespace
 rules:
   - apiGroups:
@@ -124,12 +124,12 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: managedresource:auto-roles-2:triggers:configmap
+  name: espejote:managedresource:auto-roles-2:triggers:configmap
   namespace: my-namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: managedresource:auto-roles-2:triggers:configmap
+  name: espejote:managedresource:auto-roles-2:triggers:configmap
 subjects:
   - kind: ServiceAccount
     name: espejote-auto-roles-2
@@ -138,12 +138,12 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: managedresource:auto-roles-2:triggers:secret
+  name: espejote:managedresource:auto-roles-2:triggers:secret
   namespace: my-namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: managedresource:auto-roles-2:triggers:secret
+  name: espejote:managedresource:auto-roles-2:triggers:secret
 subjects:
   - kind: ServiceAccount
     name: espejote-auto-roles-2
@@ -152,12 +152,12 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: managedresource:my-namespace:auto-roles-2:triggers:pod
+  name: espejote:managedresource:my-namespace:auto-roles-2:triggers:pod
   namespace: other-namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: managedresource:my-namespace:auto-roles-2:triggers:pod
+  name: espejote:managedresource:my-namespace:auto-roles-2:triggers:pod
 subjects:
   - kind: ServiceAccount
     name: espejote-auto-roles-2
@@ -166,11 +166,11 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: managedresource:my-namespace:auto-roles-2:context:namespaces
+  name: espejote:managedresource:my-namespace:auto-roles-2:context:namespaces
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: managedresource:my-namespace:auto-roles-2:context:namespaces
+  name: espejote:managedresource:my-namespace:auto-roles-2:context:namespaces
 subjects:
   - kind: ServiceAccount
     name: espejote-auto-roles-2
@@ -179,12 +179,12 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: managedresource:auto-roles-2:context:configmap
+  name: espejote:managedresource:auto-roles-2:context:configmap
   namespace: my-namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: managedresource:auto-roles-2:context:configmap
+  name: espejote:managedresource:auto-roles-2:context:configmap
 subjects:
   - kind: ServiceAccount
     name: espejote-auto-roles-2

@@ -11,9 +11,14 @@ parameters:
           memory: 256Mi
 
     jsonnetLibraries:
+      a/my-lib:
+        spec:
+          data:
+            foo: bar
       my-lib:
         spec:
-          foo: bar
+          data:
+            foo: bar
 
     managedResources:
       without-sa:
@@ -39,20 +44,25 @@ parameters:
               - apiGroups:
                   - ""
                 resources:
-                  - namespace
+                  - namespaces
                 verbs:
                   - list
         _roles:
-          configmap:
+          configmaps:
             rules:
-              - apiGroups:
-                  - ""
-                resources:
-                  - configmap
-                verbs:
-                  - list
-                  - get
-                  - create
+              - apiGroups: [""]
+                resources: [configmaps]
+                verbs: [patch]
+          a/configmaps:
+            rules:
+              - apiGroups: [""]
+                resources: [configmaps]
+                verbs: [patch]
+          b/configmaps:
+            rules:
+              - apiGroups: [""]
+                resources: [configmaps]
+                verbs: [patch]
         spec:
           triggers: []
           context: []
@@ -69,12 +79,12 @@ parameters:
             name: copy-configmap
       my-namespace/auto-roles-1:
         _roles:
-          configmap:
+          espejote-update-configmaps:
             rules:
               - apiGroups:
                   - ""
                 resources:
-                  - configmap
+                  - configmaps
                 verbs:
                   - patch
                   - delete
@@ -110,7 +120,7 @@ parameters:
             - name: weird-resource
               watchResource:
                 _resource: sheep
-                apiVersion: v1
+                apiVersion: cattle.farmersdelight.io/v1
                 kind: Sheep
           context: []
       my-namespace/auto-roles-2:

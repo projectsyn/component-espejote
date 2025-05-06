@@ -2,13 +2,13 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    app.kubernetes.io/name: namespace
-  name: namespace
+    app.kubernetes.io/name: espejote:supplemental:my-namespace:copy-configmap:namespace
+  name: espejote:supplemental:my-namespace:copy-configmap:namespace
 rules:
   - apiGroups:
       - ''
     resources:
-      - namespace
+      - namespaces
     verbs:
       - list
 ---
@@ -21,7 +21,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: namespace
+  name: espejote:supplemental:my-namespace:copy-configmap:namespace
 subjects:
   - kind: ServiceAccount
     name: espejote-copy-configmap

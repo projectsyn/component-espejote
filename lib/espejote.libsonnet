@@ -110,6 +110,7 @@ local generateRolesForManagedResource(manifest) =
     metadata: {
       [if !clusterScoped(resource) then 'namespace']: resourceNs,
       name: std.join(':', std.prune([
+        'espejote',
         'managedresource',
         if clusterScoped(resource) || manifestMeta.namespace != resourceNs then manifestMeta.namespace,
         manifestMeta.name,
@@ -189,21 +190,71 @@ local hideInternalKeys(manifest) = manifest {
   },
 };
 
-local serviceAccountNameForManagedResource(manifest, default='default') =
+/**
+  * \brief Returns the name of the ServiceAccount a ManagedResource uses or `default`.
+  *
+  * \arg The ManagedResource manifest.
+  * \arg The default ServiceAccount name to return if not found. Defaults to `default`.
+  * \return The name of the ServiceAccount as a string.
+  */
+local serviceAccountNameFromManagedResource(manifest, default='default') =
   std.get(std.get(std.get(manifest, 'spec', {}), 'serviceAccountRef', {}), 'name', default);
+
+/**
+  * \brief Automatically generates RBAC roles and bindings for a ManagedResources context and trigger sections.
+  *
+  * This function generates RBAC roles and bindings for the context and trigger sections of a ManagedResource.
+  * A role or cluster role, with binding, is created for each resource section in the context and trigger sections.
+  * The function tries to guess the resource name and the scope of the resource.
+  * It is possible to override the guessed resource name and scope by adding the `_resource: 'irregular'` and `_namespaced: false` keys to the resource.
+  * Those keys are removed from the returned ManagedResource manifest.
+  *
+  *   spec:
+  *     context:
+  *       - name: configmaps
+  *         watchResource:
+  *           apiVersion: v1
+  *           kind: ConfigMap
+  *       - name: namespaces
+  *         watchResource:
+  *           apiVersion: v1
+  *           kind: Namespace
+  *       - name: pods
+  *         watchResource:
+  *           apiVersion: v1
+  *           kind: Pod
+  *           namespace: ''
+  *       - name: clusterversions
+  *         watchResource:
+  *           apiVersion: v1
+  *           kind: ClusterVersion
+  *     triggers:
+  *       - name: weird-resource
+  *         watchResource:
+  *           _resource: sheep
+  *           _namespaced: false
+  *           apiVersion: cattle.farmersdelight.io/v1
+  *           kind: Sheep
+  *
+  * creates a role for the ConfigMaps and a ClusterRole for the Sheep, Namespaces, Pods, and ClusterVersions.
+  *
+  * \arg The ManagedResource manifest.
+  * \arg The default ServiceAccount name to return if not found. Defaults to `default`.
+  * \return An list of manifests with the cleaned Managed Resource in the first position and the RBAC roles and bindings in the rest.
+  */
+local createContextRBAC(manifest) =
+  local roles = generateRolesForManagedResource(manifest);
+  [ hideInternalKeys(manifest) ] + roles + bindRoles(
+    manifest.metadata.namespace,
+    serviceAccountNameFromManagedResource(manifest),
+    roles
+  );
 
 {
   admission: admission,
   jsonnetLibrary: jsonnetLibrary,
   managedResource: managedResource,
 
-  serviceAccountNameForManagedResource: serviceAccountNameForManagedResource,
-
-  readingRbacObjects: function(manifest)
-    local roles = generateRolesForManagedResource(manifest);
-    [ hideInternalKeys(manifest) ] + roles + bindRoles(
-      manifest.metadata.namespace,
-      serviceAccountNameForManagedResource(manifest),
-      roles
-    ),
+  serviceAccountNameFromManagedResource: serviceAccountNameFromManagedResource,
+  createContextRBAC: createContextRBAC,
 }

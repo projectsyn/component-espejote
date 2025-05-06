@@ -42,24 +42,31 @@ The resources of the deployment.
 
 [horizontal]
 type:: dictionary
+example::
 +
 [source,yaml]
 ----
 jsonnetLibraries:
   my-lib: <1>
     metadata: ... <2>
-    spec: ... <3>
+    spec:
+      data:
+        foo.libsonnet: "{}" <3>
+  myns/my-lib: {} <4>
 ----
 <1> The name of the jsonnet library.
+Can be a namespaced name `<namespace>/<name>`.
+If not namespaced, the library is created as a shared library for all managed resources to use.
 <2> The metadata of the jsonnet library (optional).
-<3> The spec of the jsonnet library (required).
+<3> The library data.
+The import path of the library is `[lib/]<JsonnetLibrary name>/<key in .spec.data>`.
+The `lib/` prefix is added if the library is shared.
+<4> Namespaced library.
+Only available to the managed resources in the same namespace.
+Imported with `<name>/<key>` without the `lib/` prefix.
 
 The jsonnet libraries to deploy.
-
-[NOTE]
-====
-Only shared libraries, i.e. libraries in the component's namespace, are supported.
-====
+Can be shared, if set without namespace prefix or namespaced if the key contains a namespace prefix.
 
 
 == `managedResources`
@@ -101,9 +108,24 @@ If no service account is provided in the spec, the component will create a new o
 [NOTE]
 ====
 The component will automatically create roles and cluster roles (and their bindings) to read the resources defined in the `triggers` and `context` keys of the managed resource.
+
+The library guesses the resource name and scope from the kind.
+Those parameters can't reliably guessed without access to the cluster API.
+The guess can be overridden with the `_namespaced: bool` and `_resource: string` settings.
+
+[source,yaml]
+----
+triggers:
+- name: irregular-resource
+  watchResource:
+    _resource: sheep
+    _namespaced: true
+    apiVersion: cattle.farmersdelight.io/v1
+    kind: Sheep
+----
 ====
 
-== `managedResources.<name>.clusterRules` / `managedResources.<name>.rules`
+== `managedResources.<name>._roles` / `managedResources.<name>._clusterRoles`
 
 [horizontal]
 type:: dictionary
@@ -113,43 +135,48 @@ example::
 ----
 managedResources:
   my-namespace/copy-configmap:
-    _rules:
-      configmap: <1>
-        apiGroups:
-          - ""
-        resources:
-          - configmap
-        verbs:
-          - list
-          - get
-          - create
-          - ~delete <2>
-    _clusterRules:
-      namespace:
-        apiGroups:
-          - ""
-        resources:
-          - namespace
-        verbs:
-          - list
+    _roles:
+      configmaps: <1>
+        rules:
+        - apiGroups:
+            - ""
+          resources:
+            - configmaps
+          verbs:
+            - list
+            - get
+            - create
+            - ~delete <2>
+      otherns/configmaps: <3>
+        rules:
+        - apiGroups: [""]
+          resources: [configmaps]
+          verbs: [delete]
+    _clusterRoles:
+      namespaces:
+        rules:
+        - apiGroups:
+            - ""
+          resources:
+            - namespaces
+          verbs:
+            - list
     metadata: ...
     spec: ...
 ----
-<1> This key is ignored by the component, but can be used in the hierarchy to edit existing rules.
+<1> The name of the role or cluster role.
+Can be a namespaced name `<namespace>/<name>` or `<name>`.
+The name part is used as the name of the role or cluster role.
+If no namespace is given, the role is created in the same namespace as the managed resource.
 <2> The verbs and resources prefixed with a tilde `~` are removed from the resulting rule, even if they're configured higher up in the configuration hierarchy.
+<3> A role with name and namespace.
 
-The keys of the `rules` and `clusterRules` dicts are ignored by the component, but can be used in the hierarchy to edit existing rules.
-The component looks for keys `apiGroups`, `resources` and `verbs` in each value of the `rules` and `clusterRules` dicts.
-Each value is transformed into an entry of the role's `rules` list.
-The component expects that the values of fields `apiGroups`, `resources` and `verbs` are lists, and removes entries prefixed with a tilde (`~`) from the final value used for the entry in the role's `rules` list.
+The keys of the `_roles` and `_clusterRoles` are the names of the roles and cluster roles to create.
+The names are prefixed with the namespace and the name of the managed resource to prevent name collisions.
+The values are the manifests of the roles and cluster roles.
+A role binding or cluster role binding is automatically created for the roles and cluster roles with the service account of the managed resource.
 
-[NOTE]
-====
-The component will create a role and a role binding for the given service account from the `rules` key,
-and a cluster role and a cluster role binding for the given service account from the `clusterRules` key.
-====
-
-=== `managedResources.<name>.clusterRoles` / `managedResources.<name>.roles`
+=== `managedResources.<name>._clusterRoleBindings` / `managedResources.<name>._roleBindings`
 
 [horizontal]
 type:: list
@@ -159,9 +186,9 @@ example::
 ----
 managedResources:
   my-namespace/copy-configmap:
-    _clusterRoles:
+    _clusterRoleBindings:
       - cluster-admin <1>
-    _roles:
+    _roleBindings:
       - my-role <2>
     metadata: ...
     spec: ...
@@ -169,7 +196,7 @@ managedResources:
 <1> The name of an existing cluster role.
 <2> The name of an existing role in the given namespace.
 
-The `clusterRoles` and `roles` keys have the same behavior, one creates role bindings for the given roles and the other creates role bindings for the given cluster roles.
+The `_clusterRoleBindings` and `_roleBindings` keys have the same behavior, one creates role bindings for the given roles and the other creates role bindings for the given cluster roles.
 
 
 == `alerts`
