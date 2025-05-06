@@ -110,7 +110,7 @@ If no service account is provided in the spec, the component will create a new o
 The component will automatically create roles and cluster roles (and their bindings) to read the resources defined in the `triggers` and `context` keys of the managed resource.
 
 The library guesses the resource name and scope from the kind.
-Those parameters can't reliably guessed without access to the cluster API.
+Those parameters can't be guessed reliably without access to the cluster API.
 The guess can be overridden with the `_namespaced: bool` and `_resource: string` settings.
 
 [source,yaml]
