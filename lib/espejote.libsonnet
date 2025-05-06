@@ -69,12 +69,12 @@ local managedResource(name, namespace) = {
 
 local generateRolesForManagedResource(manifest) =
   local manifestMeta = std.get(manifest, 'metadata', {});
-  assert std.get(manifestMeta, 'name') != null : 'name is required';
-  assert std.get(manifestMeta, 'namespace') != null : 'namespace is required';
+  assert std.objectHas(manifestMeta, 'name') : 'name is required';
+  assert std.objectHas(manifestMeta, 'namespace') : 'namespace is required';
   local manifestSpec = std.get(manifest, 'spec', {});
 
   local clusterScoped(resource) =
-    if std.get(resource, '_namespaced') != null then
+    if std.objectHas(resource, '_namespaced') then
       !std.get(resource, '_namespaced')
     else
       resource.kind == 'Namespace' || std.startsWith(resource.kind, 'Cluster') || std.get(resource, 'namespace') == '';

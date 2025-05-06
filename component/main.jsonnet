@@ -2,7 +2,6 @@
 local com = import 'lib/commodore.libjsonnet';
 local espejote = import 'lib/espejote.libsonnet';
 local kap = import 'lib/kapitan.libjsonnet';
-local helper = import 'libsonnet';
 local inv = kap.inventory();
 
 // The hiera parameters for the component
@@ -201,7 +200,7 @@ local clusterRoleBindingsForManagedResourceAndRoles(roleNamePrefix) =
       serviceAccountName(managedResourcePath),
     ), rolePaths);
 
-local supplementalRoles = {
+local supplementalRoles = std.prune({
   ['43_supplemental_role_%(namespace)s_%(name)s' % namespacedName(path)]:
     local roles = std.get(params.managedResources[path], '_roles', {});
     local mrNsName = namespacedName(path);
@@ -210,9 +209,9 @@ local supplementalRoles = {
     roleBindingsForManagedResourceAndRoles(roleNamePrefix)(path, std.objectFields(roles)) +
     roleBindingsForManagedResourceAndRoles(roleNamePrefix)(path, std.get(params.managedResources[path], '_roleBindings', []))
   for path in std.objectFields(params.managedResources)
-};
+});
 
-local supplementalClusterRoles = {
+local supplementalClusterRoles = std.prune({
   [if std.length(std.get(params.managedResources[path], '_clusterRoles', {})) > 0 then '44_supplemental_cluster_role_%(namespace)s_%(name)s' % namespacedName(path)]:
     local roles = std.get(params.managedResources[path], '_clusterRoles', {});
     local mrNsName = namespacedName(path);
@@ -221,7 +220,7 @@ local supplementalClusterRoles = {
     clusterRoleBindingsForManagedResourceAndRoles(roleNamePrefix)(path, std.objectFields(roles)) +
     clusterRoleBindingsForManagedResourceAndRoles(roleNamePrefix)(path, std.get(params.managedResources[path], '_clusterRoleBindings', []))
   for path in std.objectFields(params.managedResources)
-};
+});
 
 // Define outputs below
 {
