@@ -1,0 +1,38 @@
+= Alert rule: EspejoteOutOfMemoryEvents
+
+include::partial$runbooks/contribution_note.adoc[]
+
+== icon:glasses[] Overview
+
+This alert fires if Espejote pods are crashing due to an OOM (Out Of Memory) events.
+
+There might be a cache misconfiguration or Espjote needs more memory.
+
+== icon:bug[] Steps for debugging
+
+=== Check cache metrics
+
+[source]
+----
+topk(10,sum by(exported_namespace,managedresource,name) (espejote_cache_size_bytes))
+topk(10,sum by(exported_namespace,managedresource,name) (espejote_cached_objects))
+----
+
+Check if cache size can be reduced by selecting a smaller amount of objects by using label selectors or other filters.
+All cache options can be found with the `kubectl explain managedresource.spec.context.resource` and `kubectl explain managedresource.spec.triggers.watchResource` commands.
+
+If using the same selectors for triggers and context the cache can be shared between them by using `.spec.triggers.watchContextResource`.
+
+=== Increase memory limits
+
+[source]
+----
+parameters:
+  espejote:
+    resources:
+      espejote:
+        limits:
+          memory: 1Gi
+----
+
+Increase the memory limits of the Espejote deployment in the Project Syn hierarchy.

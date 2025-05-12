@@ -1,0 +1,25 @@
+= Alert rule: EspejoteManagedResourceReadinessChanges
+
+include::partial$runbooks/contribution_note.adoc[]
+
+== icon:glasses[] Overview
+
+This alert fires a managed resource changes between ready and not ready.
+
+The most likely cause is a template applying different manifests depending on the trigger data.
+There might also be a conflict between Espejote and another controller.
+
+== icon:bug[] Steps for debugging
+
+=== Check events on the managed resource
+
+Espejote reports error information as events on the managed resource.
+
+[source,bash]
+----
+MR_NAME=
+MR_NAMESPACE=
+kubectl events -n "$MR_NAMESPACE" --for "managedresource/${MR_NAME}"
+----
+
+An explanation of the different error states can be found in the xref:runbooks/EspejoteManagedResourceNotReady.adoc[EspejoteManagedResourceNotReady] runbook.

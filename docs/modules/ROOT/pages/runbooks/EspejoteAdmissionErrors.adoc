@@ -1,0 +1,18 @@
+= Alert rule: EspejoteAdmissionErrors
+
+include::partial$runbooks/contribution_note.adoc[]
+
+== icon:glasses[] Overview
+
+This alert fires when an Admission resource fails.
+This can be caused by a misconfiguration of the Admission resource or an incorrect patch.
+
+Generally, Admission resources should never error but only return `allowed`` or `denied`.
+
+== icon:bug[] Steps for debugging
+
+=== Check what triggers the reconciles
+
+Check the logs of the Espejote deployment or the logs/ outputs of the requestor.
+
+If the logs contain `assertPatch` and `JSON patch failed` you can verify your patch on https://jsonpatch.me[jsonpatch.me].

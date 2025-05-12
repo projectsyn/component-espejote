@@ -1,0 +1,95 @@
+= Alert rule: EspejoteManagedResourceNotReady
+
+include::partial$runbooks/contribution_note.adoc[]
+
+== icon:glasses[] Overview
+
+This alert fires a managed resource stays in an unready state.
+
+There might be an RBAC, context definition, or template issue.
+There might also be a conflict between Espejote and another controller.
+
+== icon:bug[] Steps for debugging
+
+=== Check the status of the managed resource
+
+[source,bash]
+----
+MR_NAME=
+MR_NAMESPACE=
+
+kubectl get managedresource -n "$MR_NAMESPACE" "$MR_NAME"
+----
+
+The following states are possible:
+
+==== `Ready`
+
+The managed resource is ready.
+
+==== `ReconcileError`
+
+A unknown error occurred during reconciliation.
+Consult Espejote logs and events on the managed resources for more information.
+
+==== `ServiceAccountError`
+
+Espejote was not able to create a service account token for the managed resource.
+The configured service account might not exist.
+
+==== `WaitingForCacheSync`
+
+Espejote is waiting for the cache to be synced.
+This is expected when the managed resource is created or updated.
+The managed resource should be ready after a few seconds.
+If the managed resource is not ready after a few seconds, the most likely issue is an RBAC issue.
+Consult Espejote logs and events on the managed resources for more information.
+
+==== `DependencyConfigurationError`
+
+A context or trigger resource is not configured correctly.
+Check `apiVersion` and `kind` of the context and trigger resources.
+There might be a typo or the resource might not exist.
+Consult Espejote logs and events on the managed resources for more information.
+
+You can check all available resources with the following command:
+
+[source,bash]
+----
+kubectl api-resources
+----
+
+==== `TemplateError`
+
+The template is not valid, the template used an `assert` statement that failed, or an import failed.
+Check the template for errors.
+Consult Espejote logs and events on the managed resources for more information.
+
+==== `TemplateReturnError`
+
+The template was rendered successfully, but the returned objects are not valid.
+A template is allowed to return a single object, and array of objects or null.
+Everything else is considered an error.
+Consult Espejote logs and events on the managed resources for more information.
+
+==== `ApplyError`
+
+The template was rendered successfully, but the returned objects could not be applied.
+The most likely causes are:
+
+* The returned objects are not valid.
+* A conflict occurred while applying the objects.
+* Missing RBAC permissions.
+
+Consult Espejote logs and events on the managed resources for more information.
+
+=== Check events on the managed resource
+
+Espejote reports error information as events on the managed resource.
+
+[source,bash]
+----
+MR_NAME=
+MR_NAMESPACE=
+kubectl events -n "$MR_NAMESPACE" --for "managedresource/${MR_NAME}"
+----
