@@ -7,7 +7,7 @@
       "name": "Espejote",
       "slug": "espejote",
       "parameter_key": "espejote",
-      "test_cases": "defaults resources",
+      "test_cases": "defaults resources lib",
       "add_lib": "n",
       "add_pp": "n",
       "add_golden": "y",
