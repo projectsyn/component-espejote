@@ -8,4 +8,84 @@ metadata:
 spec:
   groups:
     - name: espejote
-      rules: []
+      rules:
+        - alert: EspejoteAbnormalReconciles
+          annotations:
+            description: |
+              The ManagedResource {{$labels.exported_namespace}}/{{$labels.managedresource}} has been reconciles {{$value}} times more than last week.
+
+              Check which trigger triggers the reconciling `sum by(exported_namespace,managedresource,trigger) (rate(espejote_reconciles_total[10m]))`.
+            runbook_url: https://hub.syn.tools/component-espejote/runbooks/EspejoteAbnormalReconciles.html
+            summary: Abnormal amount of ManagedResource reconciles
+          expr: |2
+                sum by(exported_namespace,managedresource) (rate(espejote_reconciles_total[10m]))
+              /
+                (0.1 + sum by(exported_namespace,managedresource) (rate(espejote_reconciles_total[10m] offset 1w))) > 50
+            and
+              sum by(exported_namespace,managedresource) (increase(espejote_reconciles_total[10m])) > 10
+          for: 10m
+          labels:
+            severity: warning
+            syn: 'true'
+            syn_component: espejote
+        - alert: EspejoteAdmissionErrors
+          annotations:
+            description: |
+              The Admission {{$labels.exported_namespace}}/{{$labels.admission}} has errors.
+
+              Admissions should never error and should always return allowed or denied.
+              Check Espejote logs or logs of the requestor.
+            runbook_url: https://hub.syn.tools/component-espejote/runbooks/EspejoteAdmissionErrors.html
+            summary: Admission errors
+          expr: increase(espejote_admission_requests_total{code=~"5.."}[1m]) >= 1
+          for: 1m
+          labels:
+            severity: warning
+            syn: 'true'
+            syn_component: espejote
+        - alert: EspejoteManagedResourceNotReady
+          annotations:
+            description: |
+              The ManagedResource {{$labels.exported_namespace}}/{{$labels.managedresource}} has not been ready for the last 10 minutes.
+
+              Check the status with `k -n "{{$labels.exported_namespace}}" get managedresources.espejote.io` and the events with `kubectl events -n "{{$labels.exported_namespace}}" --for managedresource/{{$labels.managedresource}}` for error information.
+            runbook_url: https://hub.syn.tools/component-espejote/runbooks/EspejoteManagedResourceNotReady.html
+            summary: Managed resource not ready
+          expr: |
+            espejote_managedresource_status_ready == 0
+          for: 10m
+          labels:
+            severity: warning
+            syn: 'true'
+            syn_component: espejote
+        - alert: EspejoteManagedResourceReadinessChanges
+          annotations:
+            description: |
+              The ManagedResource {{$labels.exported_namespace}}/{{$labels.managedresource}} has changed status {{$value}} times within 10 minutes.
+
+              Check events with `kubectl events -n "{{$labels.exported_namespace}}" --for managedresource/{{$labels.managedresource}}` for error information.
+            runbook_url: https://hub.syn.tools/component-espejote/runbooks/EspejoteManagedResourceReadinessChanges.html
+            summary: Too many managed resource readiness changes.
+          expr: |
+            changes(espejote_managedresource_status_ready[10m]) > 10
+          for: 10m
+          labels:
+            severity: warning
+            syn: 'true'
+            syn_component: espejote
+        - alert: EspejoteOutOfMemoryEvents
+          annotations:
+            description: |
+              An espejote container had {{$value}} OOM events within 10 minutes.
+
+              Increase memory available to Espejote or reduce resource usage of the ManagedResources or Admissions.
+              Check memory usage of managed resources with `topk(10,sum by(exported_namespace,managedresource,name) (espejote_cache_size_bytes))`.
+            runbook_url: https://hub.syn.tools/component-espejote/runbooks/EspejoteOutOfMemoryEvents.html
+            summary: Espejote is out of memory
+          expr: |
+            increase(container_oom_events_total{namespace="syn-espejote"}[10m]) > 2
+          for: 10m
+          labels:
+            severity: warning
+            syn: 'true'
+            syn_component: espejote

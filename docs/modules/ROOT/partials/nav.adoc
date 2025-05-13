@@ -1,2 +1,9 @@
 * xref:index.adoc[Home]
 * xref:references/parameters.adoc[Parameters]
+
+* Runbooks
+** xref:runbooks/EspejoteAbnormalReconciles.adoc[]
+** xref:runbooks/EspejoteAdmissionErrors.adoc[]
+** xref:runbooks/EspejoteManagedResourceNotReady.adoc[]
+** xref:runbooks/EspejoteManagedResourceReadynessChanges.adoc[]
+** xref:runbooks/EspejoteOutOfMemoryEvents.adoc[]

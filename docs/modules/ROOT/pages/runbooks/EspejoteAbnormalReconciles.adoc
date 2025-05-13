@@ -1,0 +1,30 @@
+= Alert rule: EspejoteAbnormalReconciles
+
+include::partial$runbooks/contribution_note.adoc[]
+
+== icon:glasses[] Overview
+
+This alert fires if a managed resource is reconciling 50 times more than last week.
+The values is a sliding window of 10 minutes.
+
+This alert is useful to detect if a managed resource is stuck in a reconcile loop.
+
+== icon:bug[] Steps for debugging
+
+=== Check what triggers the reconciles
+
+[source]
+----
+sum by(exported_namespace,managedresource,trigger) (rate(espejote_reconciles_total{exported_namespace="MR_NAMESPACE",managedresource="MR_NAME"}[10m]))
+----
+
+Check which trigger is causing the reconciles.
+You might constantly update a resource that is used as a trigger.
+If the trigger name is empty, the trigger is the managed resource itself getting updated.
+
+You can watch the trigger resource and check what is changing:
+
+[source,bash]
+----
+kubectl get <TRIGGER_KIND> -n <TRIGGER_NAMESPACE> -w -oyaml
+----
