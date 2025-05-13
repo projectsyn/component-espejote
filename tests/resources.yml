@@ -5,10 +5,6 @@ parameters:
         limits:
           cpu: 200m
           memory: 256Mi
-      rbac_proxy:
-        limits:
-          cpu: 1
-          memory: 256Mi
 
     jsonnetLibraries:
       a/my-lib:

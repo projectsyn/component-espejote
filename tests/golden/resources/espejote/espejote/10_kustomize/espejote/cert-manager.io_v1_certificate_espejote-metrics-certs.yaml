@@ -1,0 +1,16 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: espejote
+  name: espejote-metrics-certs
+  namespace: syn-espejote
+spec:
+  dnsNames:
+  - espejote-controller-manager-metrics-service.syn-espejote.svc
+  - espejote-controller-manager-metrics-service.syn-espejote.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: espejote-selfsigned-issuer
+  secretName: metrics-server-cert

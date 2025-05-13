@@ -24,15 +24,96 @@ local espejote = com.Kustomization(
       newTag: params.images.espejote.tag,
       newName: '%(registry)s/%(repository)s' % params.images.espejote,
     },
-    'quay.io/brancz/kube-rbac-proxy': {
-      local image = params.images.kube_rbac_proxy,
-      newTag: image.tag,
-      newName: '%(registry)s/%(image)s' % image,
-    },
   },
   {
     // Inner kustomization layers are immutable, so we need to re-replace the namespace after changing it in an outer layer
     replacements: [
+      {
+        source: {
+          kind: 'Service',
+          version: 'v1',
+          name: 'controller-manager-metrics-service',
+          fieldPath: 'metadata.name',
+        },
+        targets: [
+          {
+            select: {
+              kind: 'Certificate',
+              group: 'cert-manager.io',
+              version: 'v1',
+              name: 'metrics-certs',
+            },
+            fieldPaths: [
+              'spec.dnsNames.0',
+              'spec.dnsNames.1',
+            ],
+            options: {
+              delimiter: '.',
+              index: 0,
+              create: true,
+            },
+          },
+          {
+            select: {
+              kind: 'ServiceMonitor',
+              group: 'monitoring.coreos.com',
+              version: 'v1',
+              name: 'controller-manager-metrics-monitor',
+            },
+            fieldPaths: [
+              'spec.endpoints.0.tlsConfig.serverName',
+            ],
+            options: {
+              delimiter: '.',
+              index: 0,
+              create: true,
+            },
+          },
+        ],
+      },
+      {
+        source: {
+          kind: 'Service',
+          version: 'v1',
+          name: 'controller-manager-metrics-service',
+          fieldPath: 'metadata.namespace',
+        },
+        targets: [
+          {
+            select: {
+              kind: 'Certificate',
+              group: 'cert-manager.io',
+              version: 'v1',
+              name: 'metrics-certs',
+            },
+            fieldPaths: [
+              'spec.dnsNames.0',
+              'spec.dnsNames.1',
+            ],
+            options: {
+              delimiter: '.',
+              index: 1,
+              create: true,
+            },
+          },
+          {
+            select: {
+              kind: 'ServiceMonitor',
+              group: 'monitoring.coreos.com',
+              version: 'v1',
+              name: 'controller-manager-metrics-monitor',
+            },
+            fieldPaths: [
+              'spec.endpoints.0.tlsConfig.serverName',
+            ],
+            options: {
+              delimiter: '.',
+              index: 1,
+              create: true,
+            },
+          },
+        ],
+      },
       {
         source: {
           kind: 'Service',
@@ -198,10 +279,6 @@ local espejote = com.Kustomization(
           template: {
             spec: {
               containers: [
-                {
-                  name: 'kube-rbac-proxy',
-                  resources: params.resources.rbac_proxy,
-                },
                 {
                   name: 'manager',
                   resources: params.resources.espejote,

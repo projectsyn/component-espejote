@@ -12,11 +12,7 @@ parameters:
       espejote:
         registry: ghcr.io
         repository: vshn/espejote
-        tag: v0.8.0
-      kube_rbac_proxy:
-        registry: quay.io
-        image: brancz/kube-rbac-proxy
-        tag: v0.18.2
+        tag: v0.9.0
 
     resources:
       espejote:
@@ -25,13 +21,6 @@ parameters:
           memory: 32Mi
         limits:
           cpu: 100m
-          memory: 128Mi
-      rbac_proxy:
-        requests:
-          cpu: 5m
-          memory: 64Mi
-        limits:
-          cpu: 500m
           memory: 128Mi
 
     jsonnetLibraries: {}
