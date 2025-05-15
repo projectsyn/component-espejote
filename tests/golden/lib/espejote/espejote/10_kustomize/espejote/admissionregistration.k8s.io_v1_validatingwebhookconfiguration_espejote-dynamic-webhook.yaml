@@ -1,0 +1,7 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: syn-espejote/espejote-serving-cert
+  name: espejote-dynamic-webhook
+webhooks: []

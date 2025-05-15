@@ -1,0 +1,7 @@
+parameters:
+  kapitan:
+    compile:
+      - input_type: jsonnet
+        input_paths:
+          - ${_base_directory}/tests/test-partial-cluster-scoped-resource.jsonnet
+        output_path: tests/
