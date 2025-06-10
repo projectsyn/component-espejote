@@ -20,7 +20,7 @@ parameters:
           cpu: 10m
           memory: 32Mi
         limits:
-          cpu: 100m
+          cpu: null
           memory: 128Mi
 
     jsonnetLibraries: {}
