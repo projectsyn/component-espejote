@@ -14,14 +14,22 @@ local namespacedName(name, namespace=params.namespace) = {
   name: if std.length(namespacedName) > 1 then namespacedName[1] else namespacedName[0],
 };
 
+local addKubernetesNameLabel(manifest) = manifest {
+  metadata+: {
+    labels+: {
+      // Kubernetes allows colons in names for some resources like `rbac.authorization.k8s.io/Role`. Colons are not valid label values.
+      'app.kubernetes.io/name': std.strReplace(manifest.metadata.name, ':', '-'),
+    },
+  },
+};
+
 // Namespace
 
-local namespace = {
+local namespace = addKubernetesNameLabel({
   apiVersion: 'v1',
   kind: 'Namespace',
   metadata: {
     labels: {
-      'app.kubernetes.io/name': params.namespace,
       name: params.namespace,
       // Configure the namespaces so that the OCP4 cluster-monitoring
       // Prometheus can find the servicemonitors and rules.
@@ -29,16 +37,15 @@ local namespace = {
     },
     name: params.namespace,
   },
-};
+});
 
 // Aggregated ClusterRole
 
-local aggregatedClusterRole = {
+local aggregatedClusterRole = addKubernetesNameLabel({
   apiVersion: 'rbac.authorization.k8s.io/v1',
   kind: 'ClusterRole',
   metadata: {
     labels: {
-      'app.kubernetes.io/name': 'espejote-crds-cluster-reader',
       'rbac.authorization.k8s.io/aggregate-to-cluster-reader': 'true',
     },
     name: 'espejote-crds-cluster-reader',
@@ -50,7 +57,7 @@ local aggregatedClusterRole = {
       verbs: [ 'get', 'list', 'watch' ],
     },
   ],
-};
+});
 
 // Alerts
 
@@ -65,13 +72,10 @@ local alertMap(field) = params.alerts[field].rule {
     syn_component: 'espejote',
   },
 };
-local alerts = {
+local alerts = addKubernetesNameLabel({
   apiVersion: 'monitoring.coreos.com/v1',
   kind: 'PrometheusRule',
   metadata: {
-    labels: {
-      'app.kubernetes.io/name': 'espejote-alerts',
-    },
     name: 'espejote-alerts',
     namespace: params.namespace,
   },
@@ -83,7 +87,7 @@ local alerts = {
       },
     ],
   },
-};
+});
 
 local serviceAccountName(name) =
   espejote.serviceAccountNameFromManagedResource(
@@ -112,32 +116,28 @@ local managedResource(mrName) =
     if std.member([ 'metadata', 'spec' ], key)
   });
 
-local serviceAccount(mrName) = {
+local serviceAccount(mrName) = addKubernetesNameLabel({
   apiVersion: 'v1',
   kind: 'ServiceAccount',
   metadata: {
     labels: {
-      'app.kubernetes.io/name': serviceAccountName(mrName),
       'managedresource.espejote.io/name': namespacedName(mrName).name,
     },
     name: serviceAccountName(mrName),
     namespace: namespacedName(mrName).namespace,
   },
-};
+});
 
 local role(prefix, defaultNamespace) =
-  function(path) {
+  function(path) addKubernetesNameLabel({
     local nsName = namespacedName(path, namespace=defaultNamespace),
     apiVersion: 'rbac.authorization.k8s.io/v1',
     kind: 'Role',
     metadata: {
-      labels: {
-        'app.kubernetes.io/name': prefix + nsName.name,
-      },
       name: prefix + nsName.name,
       namespace: nsName.namespace,
     },
-  };
+  });
 
 local clusterRole(prefix) =
   function(path)
@@ -149,14 +149,11 @@ local clusterRole(prefix) =
     };
 
 local roleBinding(roleNamePrefix) =
-  function(roleNs, roleName, saNs, saName) {
+  function(roleNs, roleName, saNs, saName) addKubernetesNameLabel({
     local bindingName = std.join(':', std.prune([ 'espejote', 'supplemental', roleName, if saNs != roleNs then saNs, saName ])),
     apiVersion: 'rbac.authorization.k8s.io/v1',
     kind: 'RoleBinding',
     metadata: {
-      labels: {
-        'app.kubernetes.io/name': bindingName,
-      },
       name: bindingName,
       [if roleNs != null then 'namespace']: roleNs,
     },
@@ -172,7 +169,7 @@ local roleBinding(roleNamePrefix) =
         namespace: saNs,
       },
     ],
-  };
+  });
 
 local clusterRoleBinding(roleNamePrefix) =
   function(roleName, saNs, saName)
