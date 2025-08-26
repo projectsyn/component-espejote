@@ -20,7 +20,7 @@ metadata:
   name: espejote:supplemental:namespace:my-namespace:espejote-copy-configmap
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: Role
+  kind: ClusterRole
   name: espejote:supplemental:my-namespace:copy-configmap:namespace
 subjects:
   - kind: ServiceAccount
