@@ -175,6 +175,9 @@ local clusterRoleBinding(roleNamePrefix) =
   function(roleName, saNs, saName)
     roleBinding(roleNamePrefix)(null, roleName, saNs, saName) + {
       kind: 'ClusterRoleBinding',
+      roleRef+: {
+        kind: 'ClusterRole',
+      },
     };
 
 local roleBindingsForManagedResourceAndRoles(roleNamePrefix) =
