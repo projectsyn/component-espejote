@@ -14,7 +14,7 @@
       "add_matrix": "y",
       "add_go_unit": "n",
       "automerge_patch": "y",
-      "automerge_patch_v0": "n",
+      "automerge_patch_v0": "y",
       "automerge_patch_regexp_blocklist": "",
       "automerge_patch_v0_regexp_allowlist": "",
       "automerge_minor_regexp_allowlist": "",
