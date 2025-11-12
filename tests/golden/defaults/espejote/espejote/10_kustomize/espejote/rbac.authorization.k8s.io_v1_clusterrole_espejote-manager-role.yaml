@@ -33,6 +33,7 @@ rules:
   - espejote.io
   resources:
   - admissions
+  - clusteradmissions
   - managedresources
   verbs:
   - create
@@ -46,6 +47,7 @@ rules:
   - espejote.io
   resources:
   - admissions/finalizers
+  - clusteradmissions/finalizers
   - managedresources/finalizers
   verbs:
   - update
@@ -53,6 +55,7 @@ rules:
   - espejote.io
   resources:
   - admissions/status
+  - clusteradmissions/status
   - managedresources/status
   verbs:
   - get
