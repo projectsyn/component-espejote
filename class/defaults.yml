@@ -12,7 +12,7 @@ parameters:
       espejote:
         registry: ghcr.io
         repository: vshn/espejote
-        tag: v0.16.3
+        tag: v0.16.4
 
     resources:
       espejote:
