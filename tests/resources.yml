@@ -150,3 +150,25 @@ parameters:
               resource:
                 apiVersion: v1
                 kind: ConfigMap
+
+    admissions:
+      my-namespace/test-admission:
+        spec:
+          mutating: false
+          template: ""
+          webhookConfiguration:
+            rules: []
+      test-admission:
+        spec:
+          mutating: false
+          template: ""
+          webhookConfiguration:
+            rules: []
+
+    clusterAdmissions:
+      test-cluster-admission:
+        spec:
+          mutating: true
+          template: ""
+          webhookConfiguration:
+            rules: []

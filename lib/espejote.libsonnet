@@ -48,6 +48,23 @@ local admission(name, namespace) = {
 };
 
 /**
+  * \brief Helper to create ClusterAdmission objects.
+  *
+  * \arg The name of the ClusterAdmission.
+  * \return A ClusterAdmission object.
+  */
+local clusterAdmission(name) = {
+  apiVersion: groupVersion,
+  kind: 'ClusterAdmission',
+  metadata: {
+    labels: {
+      'app.kubernetes.io/name': name,
+    },
+    name: name,
+  },
+};
+
+/**
   * \brief Helper to create ManagedResource objects.
   *
   * \arg The name of the ManagedResource.
@@ -337,6 +354,7 @@ local clusterScopedObject(mr_namespace, obj, resource=null, mgr_name=null) =
 
 {
   admission: admission,
+  clusterAdmission: clusterAdmission,
   jsonnetLibrary: jsonnetLibrary,
   managedResource: managedResource,
 

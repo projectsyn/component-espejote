@@ -222,6 +222,17 @@ local supplementalClusterRoles = std.prune({
   for path in std.objectFields(params.managedResources)
 });
 
+// Admissions
+
+local admission(admPath) =
+  local nsName = namespacedName(admPath);
+  espejote.admission(nsName.name, nsName.namespace) + com.makeMergeable(params.admissions[admPath]);
+
+// ClusterAdmissions
+
+local clusterAdmission(name) =
+  espejote.clusterAdmission(name) + com.makeMergeable(params.clusterAdmissions[name]);
+
 // Define outputs below
 {
   '00_namespace': namespace,
@@ -235,4 +246,10 @@ local supplementalClusterRoles = std.prune({
     local manifest = managedResource(name);
     [ serviceAccount(name) ] + espejote.createContextRBAC(manifest)
   for name in std.objectFields(params.managedResources)
+} + {
+  ['70_adm_%s_%s' % [ namespacedName(name).namespace, namespacedName(name).name ]]: admission(name)
+  for name in std.objectFields(params.admissions)
+} + {
+  ['70_cadm_%s' % name]: clusterAdmission(name)
+  for name in std.objectFields(params.clusterAdmissions)
 }
