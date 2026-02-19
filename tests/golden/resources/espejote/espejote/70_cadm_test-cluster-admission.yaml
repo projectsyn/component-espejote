@@ -1,0 +1,11 @@
+apiVersion: espejote.io/v1alpha1
+kind: ClusterAdmission
+metadata:
+  labels:
+    app.kubernetes.io/name: test-cluster-admission
+  name: test-cluster-admission
+spec:
+  mutating: true
+  template: ''
+  webhookConfiguration:
+    rules: []

@@ -25,6 +25,8 @@ parameters:
 
     jsonnetLibraries: {}
     managedResources: {}
+    admissions: {}
+    clusterAdmissions: {}
 
     alerts:
       EspejoteOutOfMemoryEvents:

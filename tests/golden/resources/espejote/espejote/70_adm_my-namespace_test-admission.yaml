@@ -1,0 +1,12 @@
+apiVersion: espejote.io/v1alpha1
+kind: Admission
+metadata:
+  labels:
+    app.kubernetes.io/name: test-admission
+  name: test-admission
+  namespace: my-namespace
+spec:
+  mutating: false
+  template: ''
+  webhookConfiguration:
+    rules: []

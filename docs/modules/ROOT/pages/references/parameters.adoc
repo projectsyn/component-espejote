@@ -199,6 +199,101 @@ managedResources:
 The `_clusterRoleBindings` and `_roleBindings` keys have the same behavior, one creates role bindings for the given roles and the other creates role bindings for the given cluster roles.
 
 
+== `admissions`
+
+[CAUTION]
+====
+This parameter exposes an alpha feature of Espejote.
+The Admission CRD is subject to change at any moment.
+====
+
+[horizontal]
+type:: dictionary
+default:: {}
+
+The namespaced Admission resources to deploy.
+
+The keys are parsed as namespaced names `<namespace>/<name>` and used as names and namespaces of the admission.
+If no namespace is provided the admission is created in the fallback namespace provided in the `namespace` parameter.
+
+=== `admissions.<name>.metadata` / `admissions.<name>.spec`
+
+[horizontal]
+type:: dictionary
+example::
++
+[source,yaml]
+----
+admissions:
+  my-namespace/my-admission: <1>
+    metadata: ... <2>
+    spec: <3>
+      mutating: true
+      template: |
+        local esp = import 'espejote.libsonnet';
+        local admission = esp.ALPHA.admission;
+        admission.allowed('Always allow')
+      webhookConfiguration:
+        rules:
+          - apiGroups: ['']
+            apiVersions: ['v1']
+            operations: [CREATE]
+            resources: [configmaps]
+            scope: Namespaced
+----
+<1> The key is parsed as a namespaced admission `<namespace>/<name>`.
+<2> The metadata of the admission (optional).
+<3> The spec of the admission (required).
+
+The metadata and spec of the admission.
+
+
+== `clusterAdmissions`
+
+[CAUTION]
+====
+This parameter exposes an alpha feature of Espejote.
+The ClusterAdmission CRD is subject to change at any moment.
+====
+
+[horizontal]
+type:: dictionary
+default:: {}
+
+The ClusterAdmission resources to deploy.
+
+=== `clusterAdmissions.<name>.metadata` / `clusterAdmissions.<name>.spec`
+
+[horizontal]
+type:: dictionary
+example::
++
+[source,yaml]
+----
+clusterAdmissions:
+  my-cluster-admission: <1>
+    metadata: ... <2>
+    spec: <3>
+      mutating: true
+      template: |
+        local esp = import 'espejote.libsonnet';
+        local admission = esp.ALPHA.admission;
+        admission.allowed('Always allow')
+      webhookConfiguration:
+        rules:
+          - apiGroups: ['']
+            apiVersions: ['v1']
+            operations: [CREATE]
+            resources: [pods]
+            scope: '*'
+----
+<1> The name of the cluster admission.
+<2> The metadata of the cluster admission (optional).
+<3> The spec of the cluster admission (required).
+
+The metadata and spec of the cluster admission.
+
+
 == `alerts`
 
 [horizontal]
