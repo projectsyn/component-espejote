@@ -131,10 +131,12 @@ local serviceAccount(mrName) = addKubernetesNameLabel({
 local role(prefix, defaultNamespace) =
   function(path) addKubernetesNameLabel({
     local nsName = namespacedName(path, namespace=defaultNamespace),
+    local name = prefix + nsName.name,
+    assert std.length(name) <= 63 : "Resource name '%s' too long!" % name,
     apiVersion: 'rbac.authorization.k8s.io/v1',
     kind: 'Role',
     metadata: {
-      name: prefix + nsName.name,
+      name: name,
       namespace: nsName.namespace,
     },
   });
@@ -150,7 +152,7 @@ local clusterRole(prefix) =
 
 local roleBinding(roleNamePrefix) =
   function(roleNs, roleName, saNs, saName) addKubernetesNameLabel({
-    local bindingName = std.join(':', std.prune([ 'espejote', 'supplemental', roleName, if saNs != roleNs then saNs, saName ])),
+    local bindingName = std.join(':', std.prune([ 'esp', 'x', roleName, if saNs != roleNs then saNs, saName ])),
     apiVersion: 'rbac.authorization.k8s.io/v1',
     kind: 'RoleBinding',
     metadata: {
@@ -204,7 +206,7 @@ local supplementalRoles = std.prune({
   ['43_supplemental_role_%(namespace)s_%(name)s' % namespacedName(path)]:
     local roles = std.get(params.managedResources[path], '_roles', {});
     local mrNsName = namespacedName(path);
-    local roleNamePrefix = std.join(':', [ 'espejote', 'supplemental', mrNsName.namespace, mrNsName.name, '' ]);
+    local roleNamePrefix = std.join(':', [ 'esp', 'x', mrNsName.namespace, mrNsName.name, '' ]);
     com.generateResources(roles, role(roleNamePrefix, mrNsName.namespace)) +
     roleBindingsForManagedResourceAndRoles(roleNamePrefix)(path, std.objectFields(roles)) +
     roleBindingsForManagedResourceAndRoles(roleNamePrefix)(path, std.get(params.managedResources[path], '_roleBindings', []))
@@ -215,7 +217,7 @@ local supplementalClusterRoles = std.prune({
   [if std.length(std.get(params.managedResources[path], '_clusterRoles', {})) > 0 then '44_supplemental_cluster_role_%(namespace)s_%(name)s' % namespacedName(path)]:
     local roles = std.get(params.managedResources[path], '_clusterRoles', {});
     local mrNsName = namespacedName(path);
-    local roleNamePrefix = std.join(':', [ 'espejote', 'supplemental', mrNsName.namespace, mrNsName.name, '' ]);
+    local roleNamePrefix = std.join(':', [ 'esp', 'x', mrNsName.namespace, mrNsName.name, '' ]);
     com.generateResources(roles, clusterRole(roleNamePrefix)) +
     clusterRoleBindingsForManagedResourceAndRoles(roleNamePrefix)(path, std.objectFields(roles)) +
     clusterRoleBindingsForManagedResourceAndRoles(roleNamePrefix)(path, std.get(params.managedResources[path], '_clusterRoleBindings', []))

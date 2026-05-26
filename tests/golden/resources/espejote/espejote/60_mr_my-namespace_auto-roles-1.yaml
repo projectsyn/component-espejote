@@ -51,7 +51,7 @@ spec:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: espejote:managedresource:my-namespace:auto-roles-1:triggers:namespace
+  name: esp:mr:my-namespace:auto-roles-1:trg:namespace
 rules:
   - apiGroups:
       - ''
@@ -65,7 +65,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: espejote:managedresource:my-namespace:auto-roles-1:triggers:configmap
+  name: esp:mr:my-namespace:auto-roles-1:trg:configmap
 rules:
   - apiGroups:
       - ''
@@ -79,7 +79,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: espejote:managedresource:my-namespace:auto-roles-1:triggers:override-namespaced-1
+  name: esp:mr:my-namespace:auto-roles-1:trg:override-namespaced-1
 rules:
   - apiGroups:
       - ''
@@ -93,7 +93,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: espejote:managedresource:auto-roles-1:triggers:override-namespaced-2
+  name: esp:mr:auto-roles-1:trg:override-namespaced-2
   namespace: my-namespace
 rules:
   - apiGroups:
@@ -108,7 +108,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: espejote:managedresource:auto-roles-1:triggers:weird-resource
+  name: esp:mr:auto-roles-1:trg:weird-resource
   namespace: my-namespace
 rules:
   - apiGroups:
@@ -123,11 +123,11 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: espejote:managedresource:my-namespace:auto-roles-1:triggers:namespace
+  name: esp:mr:my-namespace:auto-roles-1:trg:namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: espejote:managedresource:my-namespace:auto-roles-1:triggers:namespace
+  name: esp:mr:my-namespace:auto-roles-1:trg:namespace
 subjects:
   - kind: ServiceAccount
     name: espejote-auto-roles-1
@@ -136,11 +136,11 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: espejote:managedresource:my-namespace:auto-roles-1:triggers:configmap
+  name: esp:mr:my-namespace:auto-roles-1:trg:configmap
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: espejote:managedresource:my-namespace:auto-roles-1:triggers:configmap
+  name: esp:mr:my-namespace:auto-roles-1:trg:configmap
 subjects:
   - kind: ServiceAccount
     name: espejote-auto-roles-1
@@ -149,11 +149,11 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: espejote:managedresource:my-namespace:auto-roles-1:triggers:override-namespaced-1
+  name: esp:mr:my-namespace:auto-roles-1:trg:override-namespaced-1
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: espejote:managedresource:my-namespace:auto-roles-1:triggers:override-namespaced-1
+  name: esp:mr:my-namespace:auto-roles-1:trg:override-namespaced-1
 subjects:
   - kind: ServiceAccount
     name: espejote-auto-roles-1
@@ -162,12 +162,12 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: espejote:managedresource:auto-roles-1:triggers:override-namespaced-2
+  name: esp:mr:auto-roles-1:trg:override-namespaced-2
   namespace: my-namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: espejote:managedresource:auto-roles-1:triggers:override-namespaced-2
+  name: esp:mr:auto-roles-1:trg:override-namespaced-2
 subjects:
   - kind: ServiceAccount
     name: espejote-auto-roles-1
@@ -176,12 +176,12 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: espejote:managedresource:auto-roles-1:triggers:weird-resource
+  name: esp:mr:auto-roles-1:trg:weird-resource
   namespace: my-namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: espejote:managedresource:auto-roles-1:triggers:weird-resource
+  name: esp:mr:auto-roles-1:trg:weird-resource
 subjects:
   - kind: ServiceAccount
     name: espejote-auto-roles-1

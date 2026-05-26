@@ -126,12 +126,15 @@ local generateRolesForManagedResource(manifest) =
     kind: if clusterScoped(resource) then 'ClusterRole' else 'Role',
     metadata: {
       [if !clusterScoped(resource) then 'namespace']: resourceNs,
-      name: std.join(':', std.prune([
-        'espejote',
-        'managedresource',
-        if clusterScoped(resource) || manifestMeta.namespace != resourceNs then manifestMeta.namespace,
-        manifestMeta.name,
-      ] + suffixes)),
+      name:
+        local name = std.join(':', std.prune([
+          'esp',
+          'mr',
+          if clusterScoped(resource) || manifestMeta.namespace != resourceNs then manifestMeta.namespace,
+          manifestMeta.name,
+        ] + suffixes));
+        assert std.length(name) <= 63 : "Resource name '%s' too long!" % name;
+        name,
     },
     rules: [
       {
@@ -145,11 +148,11 @@ local generateRolesForManagedResource(manifest) =
   };
 
   [
-    roleFromResource([ 'triggers', item.name ], item.watchResource)
+    roleFromResource([ 'trg', item.name ], item.watchResource)
     for item in std.get(manifestSpec, 'triggers', [])
     if std.get(std.get(item, 'watchResource', {}), 'kind', '') != ''
   ] + [
-    roleFromResource([ 'context', item.name ], item.resource)
+    roleFromResource([ 'ctx', item.name ], item.resource)
     for item in std.get(manifestSpec, 'context', [])
     if std.get(std.get(item, 'resource', {}), 'kind', '') != ''
   ];
