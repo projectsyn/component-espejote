@@ -2,9 +2,9 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   labels:
-    app.kubernetes.io/name: espejote-with-sa
+    app.kubernetes.io/name: sa-with
     managedresource.espejote.io/name: with-sa
-  name: espejote-with-sa
+  name: sa-with
   namespace: syn-espejote
 ---
 apiVersion: espejote.io/v1alpha1
