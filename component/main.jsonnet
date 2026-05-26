@@ -129,17 +129,16 @@ local serviceAccount(mrName) = addKubernetesNameLabel({
 });
 
 local role(prefix, defaultNamespace) =
-  function(path) addKubernetesNameLabel({
+  function(path) {
     local nsName = namespacedName(path, namespace=defaultNamespace),
     local name = prefix + nsName.name,
-    assert std.length(name) <= 63 : "Resource name '%s' too long!" % name,
     apiVersion: 'rbac.authorization.k8s.io/v1',
     kind: 'Role',
     metadata: {
       name: name,
       namespace: nsName.namespace,
     },
-  });
+  };
 
 local clusterRole(prefix) =
   function(path)
@@ -151,7 +150,7 @@ local clusterRole(prefix) =
     };
 
 local roleBinding(roleNamePrefix) =
-  function(roleNs, roleName, saNs, saName) addKubernetesNameLabel({
+  function(roleNs, roleName, saNs, saName) {
     local bindingName = std.join(':', std.prune([ 'esp', 'x', roleName, if saNs != roleNs then saNs, saName ])),
     apiVersion: 'rbac.authorization.k8s.io/v1',
     kind: 'RoleBinding',
@@ -171,7 +170,7 @@ local roleBinding(roleNamePrefix) =
         namespace: saNs,
       },
     ],
-  });
+  };
 
 local clusterRoleBinding(roleNamePrefix) =
   function(roleName, saNs, saName)

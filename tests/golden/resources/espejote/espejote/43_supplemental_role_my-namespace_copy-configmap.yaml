@@ -1,8 +1,6 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  labels:
-    app.kubernetes.io/name: esp-x-my-namespace-copy-configmap-configmaps
   name: esp:x:my-namespace:copy-configmap:configmaps
   namespace: a
 rules:
@@ -16,8 +14,6 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  labels:
-    app.kubernetes.io/name: esp-x-my-namespace-copy-configmap-configmaps
   name: esp:x:my-namespace:copy-configmap:configmaps
   namespace: b
 rules:
@@ -31,8 +27,6 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  labels:
-    app.kubernetes.io/name: esp-x-my-namespace-copy-configmap-configmaps
   name: esp:x:my-namespace:copy-configmap:configmaps
   namespace: my-namespace
 rules:
@@ -46,8 +40,6 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  labels:
-    app.kubernetes.io/name: esp-x-configmaps-my-namespace-espejote-copy-configmap
   name: esp:x:configmaps:my-namespace:espejote-copy-configmap
   namespace: a
 roleRef:
@@ -62,8 +54,6 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  labels:
-    app.kubernetes.io/name: esp-x-configmaps-my-namespace-espejote-copy-configmap
   name: esp:x:configmaps:my-namespace:espejote-copy-configmap
   namespace: b
 roleRef:
@@ -78,8 +68,6 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  labels:
-    app.kubernetes.io/name: esp-x-configmaps-espejote-copy-configmap
   name: esp:x:configmaps:espejote-copy-configmap
   namespace: my-namespace
 roleRef:

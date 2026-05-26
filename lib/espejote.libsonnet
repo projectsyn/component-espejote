@@ -133,7 +133,6 @@ local generateRolesForManagedResource(manifest) =
           if clusterScoped(resource) || manifestMeta.namespace != resourceNs then manifestMeta.namespace,
           manifestMeta.name,
         ] + suffixes));
-        assert std.length(name) <= 63 : "Resource name '%s' too long!" % name;
         name,
     },
     rules: [

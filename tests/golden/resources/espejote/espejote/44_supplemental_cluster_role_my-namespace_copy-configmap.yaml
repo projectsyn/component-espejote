@@ -1,8 +1,6 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  labels:
-    app.kubernetes.io/name: esp-x-my-namespace-copy-configmap-namespace
   name: esp:x:my-namespace:copy-configmap:namespace
 rules:
   - apiGroups:
@@ -15,8 +13,6 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  labels:
-    app.kubernetes.io/name: esp-x-namespace-my-namespace-espejote-copy-configmap
   name: esp:x:namespace:my-namespace:espejote-copy-configmap
 roleRef:
   apiGroup: rbac.authorization.k8s.io
