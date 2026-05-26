@@ -2,8 +2,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    app.kubernetes.io/name: espejote-supplemental-my-namespace-copy-configmap-namespace
-  name: espejote:supplemental:my-namespace:copy-configmap:namespace
+    app.kubernetes.io/name: esp-x-my-namespace-copy-configmap-namespace
+  name: esp:x:my-namespace:copy-configmap:namespace
 rules:
   - apiGroups:
       - ''
@@ -16,12 +16,12 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   labels:
-    app.kubernetes.io/name: espejote-supplemental-namespace-my-namespace-espejote-copy-configmap
-  name: espejote:supplemental:namespace:my-namespace:espejote-copy-configmap
+    app.kubernetes.io/name: esp-x-namespace-my-namespace-espejote-copy-configmap
+  name: esp:x:namespace:my-namespace:espejote-copy-configmap
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: espejote:supplemental:my-namespace:copy-configmap:namespace
+  name: esp:x:my-namespace:copy-configmap:namespace
 subjects:
   - kind: ServiceAccount
     name: espejote-copy-configmap
