@@ -91,7 +91,7 @@ local alerts = addKubernetesNameLabel({
 
 local serviceAccountName(name) =
   espejote.serviceAccountNameFromManagedResource(
-    params.managedResources[name].spec,
+    params.managedResources[name],
     'espejote-%s' % namespacedName(name).name
   );
 
