@@ -7,10 +7,9 @@ local inv = kap.inventory();
 // The hiera parameters for the component
 local params = inv.parameters.espejote;
 
-// CRDs
-
-local crd = com.Kustomization(
-  'https://github.com/vshn/espejote/config/crd',
+// Contrib jsonnet lib
+local contrib = com.Kustomization(
+  'https://github.com/vshn/espejote/config/contrib',
   params.manifestVersion,
 );
 
@@ -291,6 +290,9 @@ local espejote = com.Kustomization(
     ],
   } + com.makeMergeable(params.kustomizeInput),
 ) {
+  kustomization+: {
+    resources+: contrib.kustomization.resources,
+  },
   'rm-namespace': {
     '$patch': 'delete',
     apiVersion: 'v1',
