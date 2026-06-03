@@ -23,6 +23,9 @@ local jsonnetLibrary(name, namespace) = {
     labels: {
       'app.kubernetes.io/name': name,
     },
+    annotations: {
+      'argocd.argoproj.io/sync-options': 'SkipDryRunOnMissingResource=true',
+    },
     name: name,
     namespace: namespace,
   },
@@ -42,6 +45,9 @@ local admission(name, namespace) = {
     labels: {
       'app.kubernetes.io/name': name,
     },
+    annotations: {
+      'argocd.argoproj.io/sync-options': 'SkipDryRunOnMissingResource=true',
+    },
     name: name,
     namespace: namespace,
   },
@@ -60,6 +66,9 @@ local clusterAdmission(name) = {
     labels: {
       'app.kubernetes.io/name': name,
     },
+    annotations: {
+      'argocd.argoproj.io/sync-options': 'SkipDryRunOnMissingResource=true',
+    },
     name: name,
   },
 };
@@ -77,6 +86,9 @@ local managedResource(name, namespace) = {
   metadata: {
     labels: {
       'app.kubernetes.io/name': name,
+    },
+    annotations: {
+      'argocd.argoproj.io/sync-options': 'SkipDryRunOnMissingResource=true',
     },
     name: name,
     namespace: namespace,

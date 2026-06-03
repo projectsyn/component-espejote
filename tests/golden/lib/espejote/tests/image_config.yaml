@@ -34,6 +34,8 @@ subjects:
 apiVersion: espejote.io/v1alpha1
 kind: ManagedResource
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   labels:
     app.kubernetes.io/name: config-openshift-io-images-cluster-manager
   name: config-openshift-io-images-cluster-manager
