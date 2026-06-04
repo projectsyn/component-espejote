@@ -3,7 +3,7 @@ local inv = kap.inventory();
 local params = inv.parameters.espejote;
 local argocd = import 'lib/argocd.libjsonnet';
 
-local app = argocd.App('espejote', params.namespace) {
+local app = argocd.App('espejote', params.namespace, secrets=false) {
   spec+: {
     syncPolicy+: {
       syncOptions+: [
