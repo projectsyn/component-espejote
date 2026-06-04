@@ -1,5 +1,7 @@
 = Espejote
 
-espejote is a Commodore component to manage Espejote.
+This Commodore component manages https://espejote.io[Espejote].
+
+Apart from deploying the Espejote controller, the component also deploys the Espejote https://github.com/vshn/espejote/tree/main/contrib/lib["contrib" Jsonnet libraries] as a `JsonnetLibrary`.
 
 See the xref:references/parameters.adoc[parameters] reference for further details.
