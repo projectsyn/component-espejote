@@ -78,6 +78,9 @@ local alerts = addKubernetesNameLabel({
   metadata: {
     name: 'espejote-alerts',
     namespace: params.namespace,
+    annotations: {
+      'argocd.argoproj.io/sync-options': 'SkipDryRunOnMissingResource=true',
+    },
   },
   spec: {
     groups: [
