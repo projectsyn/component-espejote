@@ -287,6 +287,17 @@ local espejote = com.Kustomization(
           },
         },
       }),
+      std.manifestJson({
+        apiVersion: 'monitoring.coreos.com/v1',
+        kind: 'ServiceMonitor',
+        metadata: {
+          name: 'controller-manager-metrics-monitor',
+          namespace: 'system',
+          annotations: {
+            'argocd.argoproj.io/sync-options': 'SkipDryRunOnMissingResource=true',
+          },
+        },
+      }),
     ],
   } + com.makeMergeable(params.kustomizeInput),
 ) {
